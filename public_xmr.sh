@@ -31,7 +31,7 @@ run_xmrig() {
     fi
 
     echo "[*] Bắt đầu đào XMR. Nhấn Ctrl+C để dừng."
-    ./xmrig -o $POOL -u $WALLET -p $WORKER -k --tls=$TLS
+    ./xmrig -o $POOL -u $WALLET -p $WORKER -k --tls
 }
 
 # === HÀM KIỂM TRA TRẠNG THÁI ===
