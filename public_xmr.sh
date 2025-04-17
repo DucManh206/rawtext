@@ -6,40 +6,54 @@ POOL="supportxmr.com:443"
 WORKER="dual-cpu-worker"
 TLS="true"
 
-# Hàm dọn dẹp khi kết thúc
+# === HÀM CHẠY XMRIG ===
+run_xmrig() {
+    # Trap dọn dẹp khi nhấn Ctrl+C
+    trap cleanup SIGINT SIGTERM
+
+    if [ -f "./xmrig" ]; then
+        echo "[✔] Đã phát hiện XMRig. Sẵn sàng chạy."
+    else
+        echo "[!] Chưa có XMRig. Đang tải và build..."
+        sudo apt update
+        sudo apt install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev
+        git clone https://github.com/xmrig/xmrig.git
+        mkdir xmrig/build && cd xmrig/build
+        cmake ..
+        make -j$(nproc)
+        cp xmrig ../../
+        cd ../../
+        echo "[+] XMRig đã build xong!"
+    fi
+
+    echo "[*] Bắt đầu đào XMR. Nhấn Ctrl+C để dừng."
+    ./xmrig -o $POOL -u $WALLET -p $WORKER -k --tls=$TLS
+}
+
+# === HÀM XOÁ XMRIG ===
 cleanup() {
     echo ""
-    echo "[!] Đang dừng XMRig và dọn dẹp..."
-
+    echo "[!] Đang dọn dẹp..."
     pkill -f xmrig
     rm -f ./xmrig
     rm -rf ./xmrig/
     rm -f ./config.json
-
-    echo "[✔] Đã xoá sạch XMRig. Tạm biệt!"
+    echo "[✔] Đã xoá sạch XMRig!"
     exit 0
 }
 
-# Gán trap khi nhấn Ctrl+C hoặc script bị kill
-trap cleanup SIGINT SIGTERM
+# === MENU ===
+clear
+echo "============================"
+echo "       XMRIG MENU"
+echo "============================"
+echo "1. Chạy XMRig"
+echo "2. Xoá XMRig"
+echo "----------------------------"
+read -p "Chọn [1-2]: " choice
 
-# Kiểm tra và cài đặt XMRig nếu chưa có
-if [ ! -f "./xmrig" ]; then
-    echo "[+] Đang tải và build XMRig..."
-    sudo apt update
-    sudo apt install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev
-    git clone https://github.com/xmrig/xmrig.git
-    mkdir xmrig/build && cd xmrig/build
-    cmake ..
-    make -j$(nproc)
-    cp xmrig ../../
-    cd ../../
-    echo "[+] XMRig đã build xong!"
-fi
-
-# Bắt đầu chạy XMRig
-echo "[*] Bắt đầu đào XMR với full CPU. Nhấn Ctrl+C để dừng và xoá..."
-./xmrig -o $POOL -u $WALLET -p $WORKER -k --tls=$TLS
-
-# Sau khi xmrig thoát, gọi cleanup luôn
-cleanup
+case "$choice" in
+    1) run_xmrig ;;
+    2) cleanup ;;
+    *) echo "[!] Lựa chọn không hợp lệ!" ;;
+esac
