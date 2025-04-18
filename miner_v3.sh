@@ -105,5 +105,6 @@ if ! command -v htop >/dev/null 2>&1; then
 fi
 
 echo "📊 Mở htop để xem tài nguyên..."
-nohup htop > /dev/null 2>&1 &
+exec htop
+
 
