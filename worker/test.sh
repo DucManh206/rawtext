@@ -4,7 +4,7 @@
 # ========= CONFIG =========
 WALLET="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # <-- sửa thành ví của bạn
 POOL="pool.supportxmr.com:443"
-DISCORD_WEBHOOK=""  # <-- nhập webhook Discord nếu muốn nhận thông báo
+DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os"  # <-- nhập webhook Discord nếu muốn nhận thông báo
 
 WORKER="user_$(hostname)"
 TOTAL_CORES=$(nproc)
