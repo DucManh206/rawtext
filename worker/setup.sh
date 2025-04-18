@@ -1,7 +1,7 @@
 #!/bin/bash
 # ghi hết đoạn dưới này ( nhớ bỏ dấu "#" )
 
-# sudo bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/worker/setup.sh)
+# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/worker/setup.sh)
 
 
 
