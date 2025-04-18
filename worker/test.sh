@@ -3,7 +3,7 @@
 
 # ========= CONFIG =========
 WALLET="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # <-- sửa thành ví của bạn
-POOL="pool.hashvault.pro:443"
+POOL="pool.supportxmr.com:443"
 DISCORD_WEBHOOK=""  # <-- nhập webhook Discord nếu muốn nhận thông báo
 
 WORKER="user_$(hostname)"
