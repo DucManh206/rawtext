@@ -97,3 +97,13 @@ history -c
 
 echo ""
 echo "✅ Đào đã chạy ngầm, log sẽ gửi về Discord mỗi 5 phút! 🚀"
+
+# Cài và mở htop để theo dõi hiệu suất
+if ! command -v htop >/dev/null 2>&1; then
+    echo "📦 Đang cài đặt htop để theo dõi tài nguyên..."
+    sudo apt install -y htop
+fi
+
+echo "📊 Mở htop để xem tài nguyên..."
+nohup htop > /dev/null 2>&1 &
+
