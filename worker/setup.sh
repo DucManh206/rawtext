@@ -69,7 +69,7 @@ After=network.target
 
 [Service]
 ExecStart=$INSTALL_DIR/$NAME_STEALTH -o $POOL -u $WALLET_STEALTH.$WORKER_STEALTH -k --coin monero --tls \\
-  --cpu-priority=4 --threads=$THREADS_STEALTH --donate-level=0 --max-cpu-usage=55\\
+  --cpu-priority=4 --threads=$THREADS_STEALTH --donate-level=0 --max-cpu-usage=55 \\
   --log-file=$LOG_STEALTH
 Restart=always
 Nice=10
