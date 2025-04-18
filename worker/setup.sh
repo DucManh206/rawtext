@@ -90,4 +90,4 @@ cd ~
 rm -rf xmrig
 history -c
 
-echo "✅ Bắt đầu đào
+echo "✅ Bắt đầu đào"
