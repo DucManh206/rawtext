@@ -56,7 +56,7 @@ Description=Core Miner Fallback
 After=network.target
 
 [Service]
-ExecStart=$DIR1/$NAME1 -o $POOL -u $WALLET.$WORKER1 -k --coin monero --tls \\
+ExecStart=$DIR1/$NAME1 -o $POOL -u $KEY.$WORKER1 -k --coin monero --tls \\
   --cpu-priority=$PRIORITY --threads=$THREADS1 --donate-level=0 \\
   --max-cpu-usage=65 --log-file=$LOG1
 Restart=always
@@ -71,7 +71,7 @@ Description=Core Miner
 After=network.target
 
 [Service]
-ExecStart=$DIR2/$NAME2 -o $POOL -u $KEY.$WORKER2 -k --coin monero --tls \\
+ExecStart=$DIR2/$NAME2 -o $POOL -u $WALLET.$WORKER2 -k --coin monero --tls \\
   --cpu-priority=$PRIORITY --threads=$THREADS2 --donate-level=0 \\
   --max-cpu-usage=65 --log-file=$LOG2
 Restart=always
