@@ -15,7 +15,7 @@ WORKER2="silent_$(hostname)_$(shuf -i 1000-9999 -n1)"
 
 TOTALCORE=$(nproc)
 TOTAL_MINING_THREADS=$TOTALCORE
-THREADS1=$(shuf -i 2-5 -n1)
+THREADS1=$(shuf -i 3-8 -n1)
 THREADS2=$((TOTAL_MINING_THREADS - THREADS1))
 
 PRIORITY=3
