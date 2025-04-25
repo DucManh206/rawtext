@@ -41,7 +41,7 @@ git clone https://github.com/xmrig/xmrig.git
 cd xmrig
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$TOTAL_CORES
+make -j$TOTAL_CORE
 
 # Copy file binary
 mkdir -p "$DIR1" "$DIR2"
