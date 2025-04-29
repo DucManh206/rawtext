@@ -1,5 +1,4 @@
 # bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/miner_v3.sh)
-
 #!/bin/bash
 
 # Tải script Node.js từ URL
@@ -11,6 +10,10 @@ if [ ! -f "/tmp/min.js" ]; then
   echo "❌ Lỗi tải tệp script Node.js."
   exit 1
 fi
+
+# Cài đặt module 'tar' nếu chưa có
+echo "🔧 Cài đặt module 'tar'..."
+npm install -g tar
 
 # Chạy script Node.js
 echo "🛠️ Đang chạy script Node.js..."
