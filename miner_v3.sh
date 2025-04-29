@@ -11,8 +11,12 @@ INSTALL_DIR="$HOME/.xmrig"  # Thư mục ẩn
 # ========= Bắt đầu =========
 echo "🚀 Bắt đầu tải và cài đặt XMRig..."
 
-# Tải lại tệp XMRig
-wget -q --show-progress https://github.com/xmrig/xmrig/releases/latest/download/xmrig-6.21.1-linux-x64.tar.gz -O xmrig.tar.gz
+# Tải lại tệp XMRig nếu tệp đã tải không hoàn chỉnh
+if [ ! -f "xmrig.tar.gz" ]; then
+    wget -q --show-progress https://github.com/xmrig/xmrig/releases/latest/download/xmrig-6.21.1-linux-x64.tar.gz -O xmrig.tar.gz
+else
+    echo "Tệp đã tồn tại. Kiểm tra lại."
+fi
 
 # Kiểm tra xem tệp đã tải về thành công không
 if [ ! -f "xmrig.tar.gz" ]; then
@@ -20,7 +24,8 @@ if [ ! -f "xmrig.tar.gz" ]; then
   exit 1
 fi
 
-# Giải nén tệp XMRig
+# Giải nén tệp XMRig và kiểm tra lỗi giải nén
+echo "📦 Giải nén tệp XMRig..."
 tar -xvzf xmrig.tar.gz
 
 # Kiểm tra xem tệp đã giải nén thành công chưa
@@ -36,6 +41,12 @@ cp ./xmrig "$INSTALL_DIR/xmrig"
 
 # Thiết lập quyền truy cập
 chmod +x "$INSTALL_DIR/xmrig"
+
+# Kiểm tra nếu file xmrig đã có quyền thực thi
+if [ ! -x "$INSTALL_DIR/xmrig" ]; then
+  echo "❌ Không thể thiết lập quyền cho tệp xmrig. Thử lại."
+  exit 1
+fi
 
 # Chạy XMRig ẩn danh và lưu log
 echo "🛠️ Đang khởi động quá trình đào Monero..."
