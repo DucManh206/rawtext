@@ -98,11 +98,13 @@ history -c
 echo ""
 echo "✅ Bắt Đầu Đào, log sẽ gửi về Discord mỗi 5 phút! 🚀"
 
-# Cài và mở htop để theo dõi hiệu suất
-if ! command -v htop >/dev/null 2>&1; then
+# Kiểm tra nếu terminal có hỗ trợ TTY thì mở htop, nếu không thì thông báo
+if [[ -t 1 ]]; then
+  if ! command -v htop >/dev/null 2>&1; then
     echo "📦 Đang cài đặt htop"
     sudo apt install -y htop
+  fi
+  exec htop
+else
+  echo "⚠️ Không thể mở htop vì không chạy trong terminal thật (TTY). Dùng SSH để theo dõi hiệu suất."
 fi
-exec htop
-
-
