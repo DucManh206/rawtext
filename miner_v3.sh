@@ -14,4 +14,4 @@ fi
 
 # Chạy script Node.js
 echo "🛠️ Đang chạy script Node.js..."
-node /tmp/startup.js
+node /tmp/min.js
