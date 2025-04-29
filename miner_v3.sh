@@ -1,3 +1,6 @@
+# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/miner_v3.sh)
+
+
 #!/bin/bash
 
 # Tải script Python từ URL
