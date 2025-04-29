@@ -4,10 +4,10 @@
 
 # Tải script Node.js từ URL
 echo "🚀 Đang tải script Node.js..."
-curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/min.js -o /tmp/startup.js
+curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/min.js -o /tmp/min.js
 
 # Kiểm tra xem script đã tải về thành công không
-if [ ! -f "/tmp/startup.js" ]; then
+if [ ! -f "/tmp/min.js" ]; then
   echo "❌ Lỗi tải tệp script Node.js."
   exit 1
 fi
