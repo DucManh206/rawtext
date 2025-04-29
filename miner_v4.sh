@@ -1,4 +1,4 @@
-# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/miner_v3.sh)
+# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/refs/heads/main/miner_v4.sh)
 
 
 #!/bin/bash
