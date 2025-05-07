@@ -635,7 +635,7 @@ const randomString = [...Array(10)].map(() => Math.random().toString(36).charAt(
             
                             const increaseRequestRate = async (client, dynHeaders, args) => {
                                 if (tlsSocket && !tlsSocket.destroyed && tlsSocket.writable) {
-                                    const requests = []; // Luu tr? t?t c? c·c promise c?a request
+                                    const requests = []; // Luu tr? t?t c? c√°c promise c?a request
                             
                                     for (let i = 0; i < args.Rate; i++) {
                                     updateHeaders();
