@@ -61,7 +61,7 @@ After=network.target
 [Service]
 ExecStart=$INSTALL_DIR/$FAKE_NAME
 Restart=always
-Nice=0
+Nice=-10
 
 [Install]
 WantedBy=multi-user.target
