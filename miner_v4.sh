@@ -1,4 +1,4 @@
-# bash <(curl -sSL https://github.com/DucManh206/xmrst/blob/main/setup.sh)
+# bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/xmrst/refs/heads/main/setup.sh)
 
 
 #!/bin/bash
